@@ -1,0 +1,28 @@
+# Dependências
+node_modules/
+
+# Produção
+dist/
+dist-ssr/
+
+# Variáveis de Ambiente (MUITO IMPORTANTE)
+.env
+.env.local
+.env.*
+!.env.example
+
+# Arquivos Sensíveis e Temporários do Projeto
+DADOS SUPABASE - APAGAR DEPOIS.txt
+DADOS*
+*.log
+
+# Pastas de Sistema e Editores (VS Code, Mac, etc.)
+.DS_Store
+.vscode/*
+!.vscode/extensions.json
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
