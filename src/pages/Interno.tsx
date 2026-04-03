@@ -8,12 +8,15 @@ import { useBuscaMateriais } from '@/hooks/useMateriais';
 import { exportarObrasExcel } from '@/utils/exportExcel';
 import type { FiltrosObra, Material } from '@/types';
 import { formatarData, formatSKU } from '@/lib/utils';
-import { ArrowLeft, Search, Download, Plus, Trash2, Edit2, Settings, Package, FileSpreadsheet, Loader2, X } from 'lucide-react';
+import { ArrowLeft, Search, Download, Plus, Trash2, Edit2, Settings, Package, FileSpreadsheet, Loader2, X, Users } from 'lucide-react';
+import GerenciarEquipe from '@/components/GerenciarEquipe';
 
 const FILTROS_VAZIOS: FiltrosObra = {
   endereco: '', tecnico: '', cidade: '', uf: 'todos', tipo_obra: 'todos', data_de: '', data_ate: '',
 };
-type Aba = 'consultar' | 'materiais';
+
+// 👇 Atualizado para incluir 'equipe'
+type Aba = 'consultar' | 'materiais' | 'equipe';
 
 export default function Interno() {
   const [aba, setAba] = useState<Aba>('consultar');
@@ -87,12 +90,16 @@ export default function Interno() {
 
       <main className="max-w-4xl mx-auto px-4 py-6">
         {/* Abas */}
-        <div className="flex gap-1 bg-white border border-gray-200 rounded-2xl p-1 mb-6 shadow-sm">
+        <div className="flex gap-1 bg-white border border-gray-200 rounded-2xl p-1 mb-6 shadow-sm flex-wrap sm:flex-nowrap">
           <TabBtn active={aba === 'consultar'} onClick={() => setAba('consultar')} icon={<FileSpreadsheet className="h-4 w-4" />}>
             Consultar Obras
           </TabBtn>
           <TabBtn active={aba === 'materiais'} onClick={() => setAba('materiais')} icon={<Package className="h-4 w-4" />}>
             Gerenciar Materiais
+          </TabBtn>
+          {/* 👇 Nova Aba Adicionada */}
+          <TabBtn active={aba === 'equipe'} onClick={() => setAba('equipe')} icon={<Users className="h-4 w-4" />}>
+            Gerenciar Equipe
           </TabBtn>
         </div>
 
@@ -290,6 +297,12 @@ export default function Interno() {
             </div>
           </div>
         )}
+
+        {/* 👇 ABA: EQUIPE (Nova funcionalidade) */}
+        {aba === 'equipe' && (
+          <GerenciarEquipe />
+        )}
+
       </main>
     </div>
   );
