@@ -33,7 +33,7 @@ export async function adicionarMaterial(
     sku:      material.sku.trim().toUpperCase(),
     descricao: material.descricao.trim(),
     unidade:  material.unidade,
-    quantidade: material.quantidade ?? 0,
+    quantidade: Number(material.quantidade) || 0,
     categoria: material.categoria,
   });
   if (error) {
@@ -52,8 +52,8 @@ export async function atualizarMaterial(
       mat_code:  dados.mat_code.trim().toUpperCase(),
       descricao: dados.descricao.trim(),
       unidade:   dados.unidade,
-      quantidade: dados.quantidade,
-      atualizado_em: new Date().toISOString(),
+      quantidade: Number(dados.quantidade) || 0,
+      // REMOVIDO: atualizado_em - Esta coluna não existe no seu banco de dados
     })
     .eq('sku', sku);
   if (error) throw new Error(error.message);
@@ -72,7 +72,10 @@ export async function incrementarMaterial(sku: string, delta: number): Promise<v
 
   const { error } = await supabase
     .from('materiais')
-    .update({ quantidade: novaQuantidade, atualizado_em: new Date().toISOString() })
+    .update({ 
+      quantidade: novaQuantidade 
+      // REMOVIDO: atualizado_em - Esta coluna não existe no seu banco de dados
+    })
     .eq('sku', sku);
   if (error) throw new Error(error.message);
 }

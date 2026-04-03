@@ -15,7 +15,6 @@ const FILTROS_VAZIOS: FiltrosObra = {
   endereco: '', tecnico: '', cidade: '', uf: 'todos', tipo_obra: 'todos', data_de: '', data_ate: '',
 };
 
-// 👇 Atualizado para incluir 'equipe'
 type Aba = 'consultar' | 'materiais' | 'equipe';
 
 export default function Interno() {
@@ -97,7 +96,6 @@ export default function Interno() {
           <TabBtn active={aba === 'materiais'} onClick={() => setAba('materiais')} icon={<Package className="h-4 w-4" />}>
             Gerenciar Materiais
           </TabBtn>
-          {/* 👇 Nova Aba Adicionada */}
           <TabBtn active={aba === 'equipe'} onClick={() => setAba('equipe')} icon={<Users className="h-4 w-4" />}>
             Gerenciar Equipe
           </TabBtn>
@@ -108,22 +106,35 @@ export default function Interno() {
           <div className="space-y-5 animate-fade-in">
             <div className="card p-6">
               <h2 className="text-sm font-bold text-gray-500 uppercase tracking-widest mb-5">Filtros de Busca</h2>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                <FilterInput placeholder="Técnico" value={filtros.tecnico} onChange={v => f('tecnico', v)} />
-                <FilterInput placeholder="Cidade" value={filtros.cidade} onChange={v => f('cidade', v)} />
-                <FilterInput placeholder="Endereço" value={filtros.endereco} onChange={v => f('endereco', v)} />
-                <select value={filtros.uf} onChange={e => f('uf', e.target.value)} className={sc}>
-                  <option value="todos">Todas as UFs</option>
-                  {['PR','PRI','SC','RS'].map(uf => <option key={uf} value={uf}>{uf}</option>)}
-                </select>
-                <select value={filtros.tipo_obra} onChange={e => f('tipo_obra', e.target.value)} className={sc}>
-                  <option value="todos">Todos os tipos</option>
-                  <option value="Alivio">Alívio</option>
-                  <option value="Adequacao">Adequação</option>
-                </select>
-                <div className="flex gap-2">
-                  <input type="date" value={filtros.data_de} onChange={e => f('data_de', e.target.value)} className={sc} />
-                  <input type="date" value={filtros.data_ate} onChange={e => f('data_ate', e.target.value)} className={sc} />
+              
+              {/* 👇 Grid reformulado para 4 colunas virtuais e alinhamento perfeito */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                <div className="lg:col-span-1">
+                  <FilterInput placeholder="Técnico" value={filtros.tecnico} onChange={v => f('tecnico', v)} />
+                </div>
+                <div className="lg:col-span-1">
+                  <FilterInput placeholder="Cidade" value={filtros.cidade} onChange={v => f('cidade', v)} />
+                </div>
+                <div className="lg:col-span-2">
+                  <FilterInput placeholder="Endereço" value={filtros.endereco} onChange={v => f('endereco', v)} />
+                </div>
+                
+                <div className="lg:col-span-1">
+                  <select value={filtros.uf} onChange={e => f('uf', e.target.value)} className={sc}>
+                    <option value="todos">Todas as UFs</option>
+                    {['PR','PRI','SC','RS'].map(uf => <option key={uf} value={uf}>{uf}</option>)}
+                  </select>
+                </div>
+                <div className="lg:col-span-1">
+                  <select value={filtros.tipo_obra} onChange={e => f('tipo_obra', e.target.value)} className={sc}>
+                    <option value="todos">Todos os tipos</option>
+                    <option value="Alivio">Alívio</option>
+                    <option value="Adequacao">Adequação</option>
+                  </select>
+                </div>
+                <div className="lg:col-span-2 flex gap-2">
+                  <input type="date" value={filtros.data_de} onChange={e => f('data_de', e.target.value)} className={`${sc} w-full`} />
+                  <input type="date" value={filtros.data_ate} onChange={e => f('data_ate', e.target.value)} className={`${sc} w-full`} />
                 </div>
               </div>
 
@@ -298,7 +309,7 @@ export default function Interno() {
           </div>
         )}
 
-        {/* 👇 ABA: EQUIPE (Nova funcionalidade) */}
+        {/* ABA: EQUIPE */}
         {aba === 'equipe' && (
           <GerenciarEquipe />
         )}
