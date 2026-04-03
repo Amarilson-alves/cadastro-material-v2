@@ -6,10 +6,11 @@ export function exportarObrasExcel(obras: Obra[]): void {
   const linhasMateriais = obras.flatMap((obra) => {
     const base = {
       Data:      formatarData(obra.criado_em),
+      ID_Obra:   obra.obra_id ?? '',   // ← ADICIONADO AQUI: ID automático ou digitado
       Tecnico:   obra.tecnico,
       Cidade:    obra.cidade,
       UF:        obra.uf,
-      Cluster:   obra.cluster ?? '',   // ← aparece só no relatório
+      Cluster:   obra.cluster ?? '',
       Endereco:  obra.endereco,
       Numero:    obra.numero,
       Tipo_Obra: obra.tipo_obra,
@@ -34,7 +35,7 @@ export function exportarObrasExcel(obras: Obra[]): void {
     Tecnico:          obra.tecnico,
     Cidade:           obra.cidade,
     UF:               obra.uf,
-    Cluster:          obra.cluster ?? '',   // ← aparece só no relatório
+    Cluster:          obra.cluster ?? '',
     Endereco:         `${obra.endereco}, ${obra.numero}`,
     Tipo_Obra:        obra.tipo_obra,
     Status:           obra.status,
@@ -46,7 +47,8 @@ export function exportarObrasExcel(obras: Obra[]): void {
   const ws1 = XLSX.utils.json_to_sheet(linhasMateriais);
   const ws2 = XLSX.utils.json_to_sheet(linhasResumo);
 
-  ws1['!cols'] = [10, 20, 18, 5, 15, 25, 8, 12, 10, 25, 12, 25, 8, 10].map((w) => ({ wch: w }));
+  // Ajustado para comportar a nova coluna ID_Obra (largura 18)
+  ws1['!cols'] = [10, 18, 20, 18, 5, 15, 25, 8, 12, 10, 25, 12, 15, 30, 8, 10].map((w) => ({ wch: w }));
   ws2['!cols'] = [10, 20, 18, 5, 15, 30, 12, 10, 10, 14].map((w) => ({ wch: w }));
 
   XLSX.utils.book_append_sheet(wb, ws1, 'Materiais por Obra');

@@ -3,10 +3,11 @@ import { Link } from 'react-router-dom';
 import { useMutation } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { useMateriais } from '@/hooks/useMateriais';
+import { useAuth } from '@/hooks/useAuth';
 import { salvarObra } from '@/services/obras';
 import { CidadeInput } from '@/components/CidadeInput';
 import type { Material, MaterialSelecionado } from '@/types';
-import { ArrowLeft, Save, Trash2, Plus, Minus, Search, Package, CheckCircle2, HardHat, Loader2 } from 'lucide-react';
+import { ArrowLeft, Save, Trash2, Plus, Minus, Search, Package, CheckCircle2, HardHat, Loader2, Calendar } from 'lucide-react';
 
 const UFS = ['PR', 'PRI', 'SC', 'RS'];
 const TIPOS_OBRA = [
@@ -14,15 +15,19 @@ const TIPOS_OBRA = [
   { value: 'Adequacao', label: 'Adequação' },
 ];
 const FORM_VAZIO = {
-  tecnico: '', idObra: '', cidade: '', cluster: '',
+  idObra: '', cidade: '', cluster: '',
   endereco: '', numero: '', complemento: '', uf: '', tipoObra: '', obs: '',
 };
 
 export default function Campo() {
+  const { perfil } = useAuth();
   const [form, setForm] = useState(FORM_VAZIO);
   const [materiais, setMateriais] = useState<MaterialSelecionado[]>([]);
   const [busca, setBusca] = useState('');
   const [filtroCategoria, setFiltroCategoria] = useState<'todos' | 'Interno' | 'Externo'>('todos');
+
+  // Geramos a data atual formatada para exibição
+  const dataHoje = useMemo(() => new Date().toLocaleDateString('pt-BR'), []);
 
   const { data: todosMateriais = [], isLoading, isError } = useMateriais();
 
@@ -64,24 +69,40 @@ export default function Campo() {
   };
 
   const handleSalvar = () => {
-    if (!form.tecnico.trim() || form.tecnico.length < 3) return toast.error('Nome do técnico obrigatório (mín. 3 caracteres).');
+    const nomeTecnico = perfil?.nome || 'Técnico Desconhecido';
+
     if (!form.cidade.trim())   return toast.error('Cidade é obrigatória.');
     if (!form.endereco.trim()) return toast.error('Endereço é obrigatório.');
     if (!form.numero.trim())   return toast.error('Número é obrigatório.');
     if (!form.uf)              return toast.error('UF é obrigatória.');
     if (!form.tipoObra)        return toast.error('Tipo de obra é obrigatório.');
     if (materiais.length === 0) return toast.error('Selecione pelo menos um material.');
+    
+    // 👇 Lógica inteligente de ID da Obra
+    let idFinalDaObra = form.idObra.trim();
+    if (!idFinalDaObra) {
+      // Gera 8 números aleatórios, ex: 04912384
+      const numerosAleatorios = Math.floor(Math.random() * 100000000).toString().padStart(8, '0');
+      idFinalDaObra = `ID - ${numerosAleatorios}`;
+    }
+
     salvarMutation.mutate({
-      tecnico: form.tecnico, uf: form.uf, cidade: form.cidade,
-      cluster: form.cluster || undefined, endereco: form.endereco,
-      numero: form.numero, complemento: form.complemento,
-      tipo_obra: form.tipoObra, obs: form.obs, obra_id: form.idObra || undefined, materiais,
+      tecnico: nomeTecnico,
+      uf: form.uf, 
+      cidade: form.cidade,
+      cluster: form.cluster || undefined, 
+      endereco: form.endereco,
+      numero: form.numero, 
+      complemento: form.complemento,
+      tipo_obra: form.tipoObra, 
+      obs: form.obs, 
+      obra_id: idFinalDaObra, // 👈 Agora ele envia o ID digitado ou o ID Automático
+      materiais,
     });
   };
 
   return (
     <div className="min-h-screen bg-[#f5f6fa]">
-      {/* Header */}
       <header className="bg-[#1e3a5f] text-white sticky top-0 z-20 shadow-lg">
         <div className="max-w-3xl mx-auto px-4 py-3.5 flex items-center gap-3">
           <Link to="/" className="p-2 rounded-xl bg-white/10 hover:bg-white/20 transition-smooth">
@@ -107,49 +128,70 @@ export default function Campo() {
 
       <main className="max-w-3xl mx-auto px-4 py-6 space-y-5">
 
-        {/* Dados da Obra */}
         <div className="card p-6 animate-fade-in">
           <h2 className="text-sm font-bold text-gray-500 uppercase tracking-widest mb-5">📋 Dados da Obra</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Field label="Nome do Técnico" required>
-              <input value={form.tecnico} onChange={e => setForm({...form, tecnico: e.target.value})}
-                placeholder="Seu nome completo" className={ic} />
+            
+            <Field label="Nome do Técnico">
+              <input 
+                value={perfil?.nome || 'Carregando...'} 
+                readOnly
+                className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm bg-gray-50 text-gray-700 font-bold cursor-not-allowed focus:outline-none" 
+              />
             </Field>
+
+            <Field label="Data do Registro">
+              <div className="relative">
+                <input 
+                  value={dataHoje} 
+                  readOnly
+                  className="w-full px-3.5 py-2.5 pl-10 border border-gray-200 rounded-xl text-sm bg-gray-50 text-gray-700 font-bold cursor-not-allowed focus:outline-none" 
+                />
+                <Calendar className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+              </div>
+            </Field>
+
             <Field label="ID da Obra (opcional)">
               <input value={form.idObra} onChange={e => setForm({...form, idObra: e.target.value})}
-                placeholder="Ex: OBRA-2024-001" className={ic} />
+                placeholder="Ex: 84920194" className={ic} />
             </Field>
-            <Field label="Endereço" required className="sm:col-span-2">
-              <input value={form.endereco} onChange={e => setForm({...form, endereco: e.target.value})}
-                placeholder="Rua das Flores" className={ic} />
-            </Field>
-            <Field label="Cidade" required>
-              <CidadeInput value={form.cidade}
-                onChange={(nome, cluster) => setForm({...form, cidade: nome, cluster: cluster ?? form.cluster})}
-                placeholder="Ex: Curitiba" />
-            </Field>
-            <div className="grid grid-cols-2 gap-3">
-              <Field label="Número" required>
-                <input value={form.numero} onChange={e => setForm({...form, numero: e.target.value})}
-                  placeholder="123" className={ic} />
-              </Field>
-              <Field label="UF" required>
-                <select value={form.uf} onChange={e => setForm({...form, uf: e.target.value})} className={ic}>
-                  <option value="">UF</option>
-                  {UFS.map(uf => <option key={uf} value={uf}>{uf}</option>)}
-                </select>
-              </Field>
-            </div>
-            <Field label="Complemento">
-              <input value={form.complemento} onChange={e => setForm({...form, complemento: e.target.value})}
-                placeholder="Apt 101, Fundos..." className={ic} />
-            </Field>
+            
             <Field label="Tipo de Obra" required>
               <select value={form.tipoObra} onChange={e => setForm({...form, tipoObra: e.target.value})} className={ic}>
                 <option value="">Selecione...</option>
                 {TIPOS_OBRA.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
               </select>
             </Field>
+
+            <Field label="Endereço" required className="sm:col-span-2">
+              <input value={form.endereco} onChange={e => setForm({...form, endereco: e.target.value})}
+                placeholder="Rua das Flores" className={ic} />
+            </Field>
+
+            <Field label="Cidade" required>
+              <CidadeInput value={form.cidade}
+                onChange={(nome, cluster) => setForm({...form, cidade: nome, cluster: cluster ?? form.cluster})}
+                placeholder="Ex: Curitiba" />
+            </Field>
+
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Número" required>
+                <input value={form.numero} onChange={e => setForm({...form, numero: e.target.value})}
+                  placeholder="123" className={ic} />
+              </Field>
+              <Field label="UF" required>
+                <select value={form.uf} onChange={e => e && setForm({...form, uf: e.target.value})} className={ic}>
+                  <option value="">UF</option>
+                  {UFS.map(uf => <option key={uf} value={uf}>{uf}</option>)}
+                </select>
+              </Field>
+            </div>
+
+            <Field label="Complemento" className="sm:col-span-2">
+              <input value={form.complemento} onChange={e => setForm({...form, complemento: e.target.value})}
+                placeholder="Apt 101, Fundos..." className={ic} />
+            </Field>
+
             <Field label="Observações" className="sm:col-span-2">
               <textarea value={form.obs} onChange={e => setForm({...form, obs: e.target.value})}
                 placeholder="Observações sobre a obra..." rows={2} className={`${ic} resize-none`} />
@@ -161,7 +203,6 @@ export default function Campo() {
         <div className="card p-6 animate-slide-up">
           <h2 className="text-sm font-bold text-gray-500 uppercase tracking-widest mb-5">📦 Selecionar Materiais</h2>
 
-          {/* Filtros */}
           <div className="flex flex-col sm:flex-row gap-3 mb-4">
             <div className="flex gap-1.5 p-1 bg-gray-100 rounded-xl">
               {(['todos', 'Interno', 'Externo'] as const).map(cat => (
@@ -183,16 +224,15 @@ export default function Campo() {
             </div>
           </div>
 
-          {/* Grid de materiais */}
           {isError && (
             <div className="text-center py-10 text-red-400 text-sm">
               <Package className="h-10 w-10 mx-auto mb-2 opacity-40" />
-              Erro ao carregar materiais. Tente novamente.
+              Erro ao carregar materiais.
             </div>
           )}
           {isLoading && (
             <div className="flex items-center justify-center py-10 gap-2 text-gray-400 text-sm">
-              <Loader2 className="h-5 w-5 animate-spin" /> Carregando materiais...
+              <Loader2 className="h-5 w-5 animate-spin" /> Carregando...
             </div>
           )}
           {!isLoading && !isError && (
@@ -221,8 +261,6 @@ export default function Campo() {
                           <span className="text-[10px] text-gray-400">{material.sku}</span>
                           <span className="text-gray-300">·</span>
                           <span className="text-[10px] text-gray-400">{material.unidade}</span>
-                          <span className="text-gray-300">·</span>
-                          <span className="text-[10px] text-gray-400">Estq: {material.quantidade}</span>
                         </div>
                       </button>
                     );
@@ -241,25 +279,25 @@ export default function Campo() {
             <div className="space-y-2">
               {materiais.map(m => (
                 <div key={m.sku}
-                  className="flex items-center gap-3 p-3 rounded-xl bg-gray-50 border border-gray-100 hover:border-gray-200 transition-smooth">
+                  className="flex items-center gap-3 p-3 rounded-xl bg-gray-50 border border-gray-100">
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-semibold text-gray-800 truncate">{m.descricao}</p>
-                    <p className="text-[11px] text-gray-400 font-mono mt-0.5">{m.mat_code} · {m.sku} · {m.unidade}</p>
+                    <p className="text-[11px] text-gray-400 font-mono mt-0.5">{m.mat_code} · {m.sku}</p>
                   </div>
                   <div className="flex items-center gap-1.5">
                     <button onClick={() => atualizarQuantidade(m.sku, m.quantidadeSelecionada - 1)}
-                      className="w-7 h-7 rounded-lg bg-white border border-gray-200 flex items-center justify-center hover:bg-gray-100 hover:border-gray-300 transition-smooth">
+                      className="w-7 h-7 rounded-lg bg-white border border-gray-200 flex items-center justify-center hover:bg-gray-100">
                       <Minus className="h-3 w-3 text-gray-600" />
                     </button>
                     <input type="number" min={1} value={m.quantidadeSelecionada}
                       onChange={e => atualizarQuantidade(m.sku, Number(e.target.value))}
-                      className="w-12 text-center text-sm font-bold border border-gray-200 rounded-lg py-1 focus:outline-none focus:ring-2 focus:ring-blue-500/30" />
+                      className="w-12 text-center text-sm font-bold border border-gray-200 rounded-lg py-1" />
                     <button onClick={() => atualizarQuantidade(m.sku, m.quantidadeSelecionada + 1)}
-                      className="w-7 h-7 rounded-lg bg-white border border-gray-200 flex items-center justify-center hover:bg-gray-100 hover:border-gray-300 transition-smooth">
+                      className="w-7 h-7 rounded-lg bg-white border border-gray-200 flex items-center justify-center hover:bg-gray-100">
                       <Plus className="h-3 w-3 text-gray-600" />
                     </button>
                     <button onClick={() => atualizarQuantidade(m.sku, 0)}
-                      className="w-7 h-7 rounded-lg bg-white border border-red-200 flex items-center justify-center hover:bg-red-50 hover:border-red-300 transition-smooth ml-1">
+                      className="w-7 h-7 rounded-lg bg-white border border-red-200 flex items-center justify-center hover:bg-red-50 ml-1">
                       <Trash2 className="h-3 w-3 text-red-400" />
                     </button>
                   </div>
@@ -272,12 +310,12 @@ export default function Campo() {
         {/* Ações */}
         <div className="flex gap-3 pb-8">
           <button onClick={handleSalvar} disabled={salvarMutation.isPending}
-            className="flex-1 flex items-center justify-center gap-2 bg-[#1e3a5f] hover:bg-[#2a4f7c] disabled:opacity-50 text-white font-bold py-3.5 rounded-2xl shadow-lg hover:shadow-xl transition-smooth text-sm">
+            className="flex-1 flex items-center justify-center gap-2 bg-[#1e3a5f] hover:bg-[#2a4f7c] disabled:opacity-50 text-white font-bold py-3.5 rounded-2xl shadow-lg transition-smooth text-sm">
             {salvarMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
             {salvarMutation.isPending ? 'Salvando...' : 'Salvar Obra'}
           </button>
           <button onClick={() => { setForm(FORM_VAZIO); setMateriais([]); setBusca(''); }}
-            className="px-6 border-2 border-gray-200 text-gray-500 hover:bg-gray-100 hover:border-gray-300 font-semibold rounded-2xl transition-smooth text-sm">
+            className="px-6 border-2 border-gray-200 text-gray-500 hover:bg-gray-100 font-semibold rounded-2xl transition-smooth text-sm">
             Limpar
           </button>
         </div>
