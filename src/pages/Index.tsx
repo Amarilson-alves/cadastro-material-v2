@@ -8,22 +8,38 @@ export default function Index() {
   const isStaff = perfil?.role === 'staff';
 
   return (
-    <div className="min-h-screen flex items-center justify-center relative overflow-hidden bg-[#0f172a]">
+    <div className="min-h-screen flex items-center justify-center relative overflow-hidden bg-[#0a0f1e]">
       {/* Background */}
       <div className="absolute inset-0 pointer-events-none">
-        <div className="absolute -top-40 -right-40 w-96 h-96 rounded-full bg-orange-600/15 blur-3xl" />
-        <div className="absolute -bottom-40 -left-40 w-96 h-96 rounded-full bg-green-600/15 blur-3xl" />
-        <div className="absolute inset-0 opacity-[0.03]"
-          style={{ backgroundImage: 'linear-gradient(#fff 1px,transparent 1px),linear-gradient(90deg,#fff 1px,transparent 1px)', backgroundSize: '60px 60px' }} />
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[500px] h-[300px] rounded-full bg-blue-600/8 blur-3xl" />
+        <div className="absolute -bottom-40 -left-40 w-96 h-96 rounded-full bg-orange-600/8 blur-3xl" />
+        <div className="absolute -bottom-40 -right-40 w-96 h-96 rounded-full bg-green-600/8 blur-3xl" />
+        <div className="absolute inset-0 opacity-[0.025]"
+          style={{ backgroundImage: 'linear-gradient(rgba(59,130,246,1) 1px,transparent 1px),linear-gradient(90deg,rgba(59,130,246,1) 1px,transparent 1px)', backgroundSize: '48px 48px' }} />
       </div>
 
       <div className="relative w-full max-w-md mx-4 animate-fade-in z-10">
         {/* Header */}
         <div className="text-center mb-10">
           <div className="inline-flex items-center justify-center w-20 h-20 rounded-3xl bg-white/5 border border-white/10 mb-5 shadow-2xl backdrop-blur-sm">
-            <span className="text-4xl">🏗️</span>
+            <svg width="40" height="40" viewBox="0 0 56 56" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M11 23 A17 17 0 0 1 45 23" stroke="#3b82f6" strokeWidth="2" strokeLinecap="round" opacity="0.4"/>
+              <path d="M16 19 A12 12 0 0 1 40 19" stroke="#3b82f6" strokeWidth="2.5" strokeLinecap="round" opacity="0.7"/>
+              <path d="M21 15.5 A7 7 0 0 1 35 15.5" stroke="#60a5fa" strokeWidth="2.8" strokeLinecap="round"/>
+              <circle cx="28" cy="13" r="3.5" fill="#f97316"/>
+              <line x1="28" y1="16.5" x2="28" y2="44" stroke="#f97316" strokeWidth="3" strokeLinecap="round"/>
+              <line x1="20" y1="27" x2="36" y2="27" stroke="#f97316" strokeWidth="2.2" strokeLinecap="round"/>
+              <line x1="16" y1="34" x2="40" y2="34" stroke="#f97316" strokeWidth="2.2" strokeLinecap="round"/>
+              <line x1="28" y1="44" x2="19" y2="52" stroke="#f97316" strokeWidth="2.2" strokeLinecap="round"/>
+              <line x1="28" y1="44" x2="37" y2="52" stroke="#f97316" strokeWidth="2.2" strokeLinecap="round"/>
+            </svg>
           </div>
-          <h1 className="text-3xl font-bold text-white mb-2 tracking-tight">Cadastro de Materiais</h1>
+          <h1 className="text-3xl font-bold text-white mb-1.5 tracking-tight">Gestão de Materiais</h1>
+          <div className="flex items-center justify-center gap-2 mb-3">
+            <span className="h-px w-6 bg-orange-500/40" />
+            <span className="text-orange-400 text-xs font-semibold tracking-widest uppercase">Telecomunicações</span>
+            <span className="h-px w-6 bg-orange-500/40" />
+          </div>
           <p className="text-slate-400 text-sm">
             Bem-vindo, <strong className="text-white">{perfil?.nome || 'Usuário'}</strong>. Selecione o módulo:
           </p>

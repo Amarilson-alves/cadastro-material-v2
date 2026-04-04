@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <rect width="32" height="32" rx="7" fill="#0f172a"/>
+  <!-- Signal arcs -->
+  <path d="M10 14 A6.4 6.4 0 0 1 22 14" stroke="#3b82f6" stroke-width="1.8" stroke-linecap="round" fill="none"/>
+  <path d="M6.5 17.5 A9.8 9.8 0 0 1 25.5 17.5" stroke="#3b82f6" stroke-width="1.2" stroke-linecap="round" fill="none" opacity="0.45"/>
+  <!-- Antenna tip dot -->
+  <circle cx="16" cy="11.5" r="2" fill="#f97316"/>
+  <!-- Pole -->
+  <line x1="16" y1="13.5" x2="16" y2="26" stroke="#f97316" stroke-width="2.2" stroke-linecap="round"/>
+  <!-- Crossbars -->
+  <line x1="11.5" y1="18" x2="20.5" y2="18" stroke="#f97316" stroke-width="1.6" stroke-linecap="round"/>
+  <line x1="9.5" y1="22" x2="22.5" y2="22" stroke="#f97316" stroke-width="1.6" stroke-linecap="round"/>
+  <!-- Base legs -->
+  <line x1="16" y1="26" x2="11" y2="30.5" stroke="#f97316" stroke-width="1.6" stroke-linecap="round"/>
+  <line x1="16" y1="26" x2="21" y2="30.5" stroke="#f97316" stroke-width="1.6" stroke-linecap="round"/>
+</svg>

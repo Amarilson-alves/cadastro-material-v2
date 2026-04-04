@@ -70,7 +70,7 @@ export default function Interno() {
 
   return (
     <div className="min-h-screen bg-[#f5f6fa]">
-      <header className="bg-[#14532d] text-white sticky top-0 z-20 shadow-lg">
+      <header className="bg-[#0f172a] text-white sticky top-0 z-20 shadow-lg border-b-2 border-green-500/60">
         <div className="max-w-4xl mx-auto px-4 py-3.5 flex items-center gap-3">
           <Link to="/" className="p-2 rounded-xl bg-white/10 hover:bg-white/20 transition-smooth">
             <ArrowLeft className="h-4 w-4" />
