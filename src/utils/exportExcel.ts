@@ -6,7 +6,7 @@ export function exportarObrasExcel(obras: Obra[]): void {
   const linhasMateriais = obras.flatMap((obra) => {
     const base = {
       Data:      formatarData(obra.criado_em),
-      ID_Obra:   obra.obra_id ?? '',   // ← ADICIONADO AQUI: ID automático ou digitado
+      ID_Obra:   obra.obra_id ?? '',
       Tecnico:   obra.tecnico,
       Cidade:    obra.cidade,
       UF:        obra.uf,
@@ -15,11 +15,24 @@ export function exportarObrasExcel(obras: Obra[]): void {
       Numero:    obra.numero,
       Tipo_Obra: obra.tipo_obra,
       Status:    obra.status,
-      Obs:       obra.obs ?? '',
     };
+    
     const mats = obra.materiais_utilizados ?? [];
-    if (mats.length === 0)
-      return [{ ...base, Mat_Code: '', SKU: '', Descricao: '', Unidade: '', Quantidade: 0 }];
+    
+    // Se não tiver materiais, imprime a linha com a base e a observação no final
+    if (mats.length === 0) {
+      return [{ 
+        ...base, 
+        Mat_Code: '', 
+        SKU: '', 
+        Descricao: '', 
+        Unidade: '', 
+        Quantidade: 0,
+        Obs: obra.obs ?? '' // ← Observação como última coluna
+      }];
+    }
+      
+    // Se tiver materiais, imprime as linhas e a observação no final
     return mats.map((m) => ({
       ...base,
       Mat_Code:   m.mat_code,
@@ -27,11 +40,13 @@ export function exportarObrasExcel(obras: Obra[]): void {
       Descricao:  m.descricao,
       Unidade:    m.unidade,
       Quantidade: m.quantidade,
+      Obs:        obra.obs ?? '', // ← Observação como última coluna
     }));
   });
 
   const linhasResumo = obras.map((obra) => ({
     Data:             formatarData(obra.criado_em),
+    ID_Obra:          obra.obra_id ?? '',
     Tecnico:          obra.tecnico,
     Cidade:           obra.cidade,
     UF:               obra.uf,
@@ -41,15 +56,16 @@ export function exportarObrasExcel(obras: Obra[]): void {
     Status:           obra.status,
     Total_Itens:      obra.materiais_utilizados?.length ?? 0,
     Total_Quantidade: obra.materiais_utilizados?.reduce((s, m) => s + m.quantidade, 0) ?? 0,
+    Obs:              obra.obs ?? '', // ← Observação no final do resumo também!
   }));
 
   const wb = XLSX.utils.book_new();
   const ws1 = XLSX.utils.json_to_sheet(linhasMateriais);
   const ws2 = XLSX.utils.json_to_sheet(linhasResumo);
 
-  // Ajustado para comportar a nova coluna ID_Obra (largura 18)
-  ws1['!cols'] = [10, 18, 20, 18, 5, 15, 25, 8, 12, 10, 25, 12, 15, 30, 8, 10].map((w) => ({ wch: w }));
-  ws2['!cols'] = [10, 20, 18, 5, 15, 30, 12, 10, 10, 14].map((w) => ({ wch: w }));
+  // Ajustado as larguras para dar espaço à coluna de observação (wch: 35) no final
+  ws1['!cols'] = [12, 18, 20, 18, 5, 15, 25, 8, 12, 10, 12, 15, 30, 8, 10, 35].map((w) => ({ wch: w }));
+  ws2['!cols'] = [12, 18, 20, 18, 5, 15, 30, 12, 10, 12, 16, 35].map((w) => ({ wch: w }));
 
   XLSX.utils.book_append_sheet(wb, ws1, 'Materiais por Obra');
   XLSX.utils.book_append_sheet(wb, ws2, 'Resumo');

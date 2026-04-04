@@ -2,7 +2,7 @@ export type Material = {
   mat_code: string;
   sku: string;
   descricao: string;
-  unidade: 'KG' | 'UN' | 'MT' | 'CX';
+  unidade: string; // 👈 Alterado para string livre
   quantidade: number;
   categoria: 'Interno' | 'Externo';
 };
@@ -49,7 +49,7 @@ export type FiltrosObra = {
 };
 
 // 👇 TIPAGENS NOVAS ADICIONADAS AQUI
-export type Role = 'tecnico' | 'staff';
+export type Role = string; // 👈 Alterado para string livre
 
 export type Perfil = {
   id: string;
