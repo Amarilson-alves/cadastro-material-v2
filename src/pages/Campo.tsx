@@ -1,13 +1,13 @@
 import { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { useMateriais } from '@/hooks/useMateriais';
+import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/hooks/useAuth';
 import { salvarObra } from '@/services/obras';
 import { CidadeInput } from '@/components/CidadeInput';
 import type { Material, MaterialSelecionado } from '@/types';
-import { ArrowLeft, Save, Trash2, Plus, Minus, Search, Package, CheckCircle2, HardHat, Loader2, Calendar } from 'lucide-react';
+import { ArrowLeft, Save, Trash2, Plus, Minus, Search, Package, CheckCircle2, HardHat, Loader2, Calendar, RefreshCw } from 'lucide-react';
 
 const UFS = ['PR', 'PRI', 'SC', 'RS'];
 const TIPOS_OBRA = [
@@ -26,10 +26,34 @@ export default function Campo() {
   const [busca, setBusca] = useState('');
   const [filtroCategoria, setFiltroCategoria] = useState<'todos' | 'Interno' | 'Externo'>('todos');
 
-  // Geramos a data atual formatada para exibição
   const dataHoje = useMemo(() => new Date().toLocaleDateString('pt-BR'), []);
 
-  const { data: todosMateriais = [], isLoading, isError } = useMateriais();
+  // 👇 A NOVA INTELIGÊNCIA: Pesquisa DIRETAMENTE no banco de dados (Igual ao Admin)
+  const { data: materiaisEncontrados = [], isLoading, isError, refetch, isFetching } = useQuery({
+    queryKey: ['materiais_campo_inteligente', busca, filtroCategoria], 
+    queryFn: async () => {
+      let q = supabase.from('materiais').select('*');
+      
+      // Aplica o filtro de Categoria no Banco
+      if (filtroCategoria !== 'todos') {
+        q = q.eq('categoria', filtroCategoria);
+      }
+      
+      // Aplica a Busca por Texto no Banco (Muito mais poderoso)
+      if (busca.trim()) {
+        const termo = `%${busca.trim()}%`;
+        q = q.or(`descricao.ilike.${termo},sku.ilike.${termo},mat_code.ilike.${termo}`);
+      }
+      
+      // Traz sempre os 150 primeiros resultados relevantes (super leve para o telemóvel)
+      const { data, error } = await q.order('descricao').limit(150);
+      
+      if (error) throw new Error(error.message);
+      return data as Material[];
+    },
+    refetchOnWindowFocus: true, // Atualiza se mudar de separador
+    staleTime: 0, // 👈 FORÇA a nunca usar dados velhos da memória
+  });
 
   const salvarMutation = useMutation({
     mutationFn: salvarObra,
@@ -41,18 +65,6 @@ export default function Campo() {
     },
     onError: (err: Error) => toast.error(err.message),
   });
-
-  const materiaisFiltrados = useMemo(() => {
-    let lista = todosMateriais;
-    if (filtroCategoria !== 'todos') lista = lista.filter(m => m.categoria === filtroCategoria);
-    if (busca.trim()) {
-      const t = busca.toLowerCase();
-      lista = lista.filter(m =>
-        m.descricao.toLowerCase().includes(t) || m.sku.toLowerCase().includes(t) || m.mat_code.toLowerCase().includes(t)
-      );
-    }
-    return lista;
-  }, [todosMateriais, filtroCategoria, busca]);
 
   const adicionarMaterial = (material: Material) => {
     setMateriais(prev => {
@@ -78,10 +90,8 @@ export default function Campo() {
     if (!form.tipoObra)        return toast.error('Tipo de obra é obrigatório.');
     if (materiais.length === 0) return toast.error('Selecione pelo menos um material.');
     
-    // 👇 Lógica inteligente de ID da Obra
     let idFinalDaObra = form.idObra.trim();
     if (!idFinalDaObra) {
-      // Gera 8 números aleatórios, ex: 04912384
       const numerosAleatorios = Math.floor(Math.random() * 100000000).toString().padStart(8, '0');
       idFinalDaObra = `ID - ${numerosAleatorios}`;
     }
@@ -96,7 +106,7 @@ export default function Campo() {
       complemento: form.complemento,
       tipo_obra: form.tipoObra, 
       obs: form.obs, 
-      obra_id: idFinalDaObra, // 👈 Agora ele envia o ID digitado ou o ID Automático
+      obra_id: idFinalDaObra, 
       materiais,
     });
   };
@@ -201,7 +211,19 @@ export default function Campo() {
 
         {/* Seleção de Materiais */}
         <div className="card p-6 animate-slide-up">
-          <h2 className="text-sm font-bold text-gray-500 uppercase tracking-widest mb-5">📦 Selecionar Materiais</h2>
+          <h2 className="text-sm font-bold text-gray-500 uppercase tracking-widest mb-5 flex justify-between items-center">
+            <span>📦 Selecionar Materiais</span>
+            
+            <button 
+              onClick={() => refetch()} 
+              disabled={isFetching}
+              className="flex items-center gap-1.5 text-blue-600 bg-blue-50 px-3 py-1.5 rounded-lg hover:bg-blue-100 transition-colors"
+              title="Buscar novos materiais no sistema"
+            >
+              <RefreshCw className={`h-4 w-4 ${isFetching ? 'animate-spin' : ''}`} />
+              <span className="hidden sm:inline text-xs font-bold">Atualizar Lista</span>
+            </button>
+          </h2>
 
           <div className="flex flex-col sm:flex-row gap-3 mb-4">
             <div className="flex gap-1.5 p-1 bg-gray-100 rounded-xl">
@@ -227,19 +249,22 @@ export default function Campo() {
           {isError && (
             <div className="text-center py-10 text-red-400 text-sm">
               <Package className="h-10 w-10 mx-auto mb-2 opacity-40" />
-              Erro ao carregar materiais.
+              Erro ao carregar materiais do banco de dados.
             </div>
           )}
+          
+          {/* Mostra carregamento APENAS se estiver buscando algo e ainda não tiver dados */}
           {isLoading && (
             <div className="flex items-center justify-center py-10 gap-2 text-gray-400 text-sm">
-              <Loader2 className="h-5 w-5 animate-spin" /> Carregando...
+              <Loader2 className="h-5 w-5 animate-spin" /> Conectando ao banco...
             </div>
           )}
+
           {!isLoading && !isError && (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-80 overflow-y-auto pr-1">
-              {materiaisFiltrados.length === 0
-                ? <p className="col-span-2 text-center text-gray-400 text-sm py-10">Nenhum material encontrado.</p>
-                : materiaisFiltrados.map(material => {
+              {materiaisEncontrados.length === 0
+                ? <p className="col-span-2 text-center text-gray-400 text-sm py-10">Nenhum material encontrado com "{busca}".</p>
+                : materiaisEncontrados.map(material => {
                     const sel = materiais.some(m => m.sku === material.sku);
                     return (
                       <button key={material.sku} onClick={() => adicionarMaterial(material)}
@@ -256,9 +281,9 @@ export default function Campo() {
                         </p>
                         <div className="flex items-center gap-1.5 mt-1.5">
                           <span className="font-mono text-[10px] bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded-md">
-                            {material.mat_code}
+                            {material.mat_code || 'S/N'}
                           </span>
-                          <span className="text-[10px] text-gray-400">{material.sku}</span>
+                          <span className="text-[10px] text-gray-400">{material.sku || 'S/N'}</span>
                           <span className="text-gray-300">·</span>
                           <span className="text-[10px] text-gray-400">{material.unidade}</span>
                         </div>
