@@ -6,21 +6,16 @@ const corsHeaders = {
 }
 
 Deno.serve(async (req) => {
-  // 1. Libera o batedor do navegador (CORS Preflight)
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
   }
 
   try {
-    // ==========================================
-    // NOVA BARREIRA DE SEGURANÇA INTERNA
-    // ==========================================
     const authHeader = req.headers.get('Authorization')
     if (!authHeader) {
       throw new Error('Acesso negado: Crachá não encontrado.')
     }
 
-    // Cria um cliente comum apenas para validar se quem chamou é de fato um usuário logado
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_ANON_KEY') ?? '',
@@ -31,11 +26,9 @@ Deno.serve(async (req) => {
     if (userError || !user) {
       throw new Error('Acesso negado: Sessão inválida ou expirada.')
     }
-    // ==========================================
 
     const { acao, email, password, nome, matricula, role, userId, senha } = await req.json()
 
-    // Cria o cliente ADMIN para executar a ação
     const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
@@ -101,9 +94,13 @@ Deno.serve(async (req) => {
     throw new Error('Ação não reconhecida.')
 
   } catch (error: any) {
+    // 🚨 1. ESCREVE O MOTIVO EXATO NOS BASTIDORES
+    console.error("ERRO NO COFRE:", error.message)
+    
+    // 🚨 2. DISFARÇA O ERRO DE 200 PARA O FRONTEND CONSEGUIR LER
     return new Response(JSON.stringify({ error: error.message }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      status: 400,
+      status: 200, 
     })
   }
 })
