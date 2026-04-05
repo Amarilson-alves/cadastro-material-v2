@@ -6,23 +6,41 @@ const corsHeaders = {
 }
 
 Deno.serve(async (req) => {
+  // 1. Libera o batedor do navegador (CORS Preflight)
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
   }
 
   try {
-    // Recebe os dados da tela
+    // ==========================================
+    // NOVA BARREIRA DE SEGURANÇA INTERNA
+    // ==========================================
+    const authHeader = req.headers.get('Authorization')
+    if (!authHeader) {
+      throw new Error('Acesso negado: Crachá não encontrado.')
+    }
+
+    // Cria um cliente comum apenas para validar se quem chamou é de fato um usuário logado
+    const supabaseClient = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+      { global: { headers: { Authorization: authHeader } } }
+    )
+
+    const { data: { user }, error: userError } = await supabaseClient.auth.getUser()
+    if (userError || !user) {
+      throw new Error('Acesso negado: Sessão inválida ou expirada.')
+    }
+    // ==========================================
+
     const { acao, email, password, nome, matricula, role, userId, senha } = await req.json()
 
-    // Cria o cliente ADMIN com a chave secreta guardada na nuvem
+    // Cria o cliente ADMIN para executar a ação
     const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
 
-    // ==========================================
-    // AÇÃO: CRIAR NOVO USUÁRIO
-    // ==========================================
     if (acao === 'criar') {
       const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
         email,
@@ -49,18 +67,13 @@ Deno.serve(async (req) => {
       })
     }
 
-    // ==========================================
-    // AÇÃO: EDITAR USUÁRIO
-    // ==========================================
     if (acao === 'editar') {
-      // 1. Atualiza Perfil Público
       const { error: profileError } = await supabaseAdmin.from('perfis').update({
         nome,
         role
       }).eq('id', userId)
       if (profileError) throw profileError
 
-      // 2. Atualiza Auth e Senha (se o admin digitou uma senha nova)
       const updateData: any = { user_metadata: { nome, role } }
       if (senha && senha.trim().length > 0) {
         updateData.password = senha
@@ -75,9 +88,6 @@ Deno.serve(async (req) => {
       })
     }
 
-    // ==========================================
-    // AÇÃO: DELETAR USUÁRIO
-    // ==========================================
     if (acao === 'deletar') {
        const { error } = await supabaseAdmin.auth.admin.deleteUser(userId)
        if (error) throw error
