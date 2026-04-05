@@ -35,24 +35,20 @@ Deno.serve(async (req) => {
     )
 
     if (acao === 'criar') {
+      // 🚨 CORREÇÃO: Voltamos a mandar o user_metadata para alimentar o seu gatilho automático!
       const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
         email,
         password,
         email_confirm: true,
+        user_metadata: { 
+          nome: nome, 
+          matricula: matricula, 
+          role: role 
+        }
       })
       if (authError) throw authError
 
-      const { error: profileError } = await supabaseAdmin.from('perfis').insert({
-        id: authData.user.id,
-        nome,
-        matricula,
-        role
-      })
-      
-      if (profileError) {
-         await supabaseAdmin.auth.admin.deleteUser(authData.user.id)
-         throw profileError
-      }
+      // Removemos o insert manual na tabela 'perfis' porque o seu banco já faz isso sozinho!
 
       return new Response(JSON.stringify({ success: true, user: authData.user }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -94,13 +90,10 @@ Deno.serve(async (req) => {
     throw new Error('Ação não reconhecida.')
 
   } catch (error: any) {
-    // 🚨 1. ESCREVE O MOTIVO EXATO NOS BASTIDORES
     console.error("ERRO NO COFRE:", error.message)
-    
-    // 🚨 2. DISFARÇA O ERRO DE 200 PARA O FRONTEND CONSEGUIR LER
     return new Response(JSON.stringify({ error: error.message }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      status: 200, 
+      status: 400, // Voltei para o padrão correto do sistema
     })
   }
 })
