@@ -6,15 +6,20 @@ export default function AutoLogout() {
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const fazerLogout = async () => {
-    // Apaga a sessão do usuário no banco
+    // 1. Evita que o cronômetro tente deslogar quem já está na tela de login
+    if (window.location.pathname === '/login') return;
+
+    // 2. Apaga a sessão do usuário no banco
     await supabase.auth.signOut();
     
-    // Mostra a notificação vermelha (opcional, pois a tela de login já vai aparecer)
-    toast.error('Sessão expirada por inatividade. Faça login novamente.');
+    // 3. Mostra a notificação vermelha
+    toast.error('Sessão expirada por inatividade.');
+
+    // 4. FORÇA o navegador a jogar o usuário para a tela de login na mesma hora
+    window.location.href = '/login';
   };
 
   const resetarCronometro = () => {
-    // Se o usuário mexer o mouse, cancela o cronômetro antigo
     if (timeoutRef.current) {
       clearTimeout(timeoutRef.current);
     }
@@ -22,19 +27,15 @@ export default function AutoLogout() {
     // ==========================================
     // ⚙️ CONFIGURAÇÃO DO TEMPO AQUI
     // ==========================================
-    // 1 minuto = 1 * 60 * 1000 milissegundos (Use isso para testar agora)
-    // 30 minutos = 30 * 60 * 1000 milissegundos (Use isso na versão final)
+    // 1 minuto = 1 * 60 * 1000 milissegundos (Para teste)
     const TEMPO_INATIVIDADE = 1 * 60 * 1000; 
 
-    // Inicia um novo cronômetro
     timeoutRef.current = setTimeout(fazerLogout, TEMPO_INATIVIDADE);
   };
 
   useEffect(() => {
-    // Inicia o cronômetro assim que o componente carrega
     resetarCronometro();
 
-    // Lista de "sinais de vida" do usuário
     const eventos = [
       'mousemove',  // Mexer o mouse
       'keydown',    // Digitar no teclado
@@ -43,16 +44,13 @@ export default function AutoLogout() {
       'click'       // Clicar em algo
     ];
 
-    // Toda vez que o usuário der um "sinal de vida", o cronômetro reinicia
     eventos.forEach(evento => window.addEventListener(evento, resetarCronometro));
 
-    // Limpeza de segurança quando o usuário sair da página
     return () => {
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
       eventos.forEach(evento => window.removeEventListener(evento, resetarCronometro));
     };
   }, []);
 
-  // Como é um componente "fantasma", ele não renderiza nada na tela
   return null; 
 }
