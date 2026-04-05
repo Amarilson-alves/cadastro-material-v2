@@ -1,12 +1,11 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
-import { supabaseAdmin } from '@/lib/supabaseAdmin';
+// 🚨 A IMPORTAÇÃO DO SUPABASE ADMIN FOI DELETADA DAQUI! 
 import { toast } from 'sonner';
 import { Trash2, Edit2, Shield, Loader2, HardHat, Search, Eye, EyeOff, Plus } from 'lucide-react';
 import type { Perfil } from '@/types';
 
-// Mesma classe de inputs usada na tela Interno.tsx para manter 100% do padrão
 const ic = 'w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-green-500/30 focus:border-green-400 transition-smooth';
 
 export default function GerenciarEquipe() {
@@ -26,17 +25,24 @@ export default function GerenciarEquipe() {
     }
   });
 
-  // 2. Mutação para Criar Usuário
+  // 2. Mutação para Criar Usuário (Ligada na Edge Function)
   const mutationCriar = useMutation({
     mutationFn: async (novoUser: typeof form) => {
       const emailFake = `${novoUser.matricula.toUpperCase()}@cadastro.fake`;
-      const { data, error } = await supabaseAdmin.auth.admin.createUser({
-        email: emailFake,
-        password: novoUser.senha,
-        email_confirm: true,
-        user_metadata: { nome: novoUser.nome, matricula: novoUser.matricula.toUpperCase(), role: novoUser.funcao }
+      
+      const { data, error } = await supabase.functions.invoke('gerenciar-usuarios', {
+        body: { 
+          acao: 'criar', 
+          email: emailFake, 
+          password: novoUser.senha, 
+          nome: novoUser.nome, 
+          matricula: novoUser.matricula.toUpperCase(), 
+          role: novoUser.funcao 
+        }
       });
+
       if (error) throw new Error(error.message);
+      if (data?.error) throw new Error(data.error);
       return data;
     },
     onSuccess: () => {
@@ -47,11 +53,15 @@ export default function GerenciarEquipe() {
     onError: (err: any) => toast.error(`Erro ao criar: ${err.message}`)
   });
 
-  // 3. Mutação para Deletar Usuário
+  // 3. Mutação para Deletar Usuário (Ligada na Edge Function)
   const mutationDeletar = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabaseAdmin.auth.admin.deleteUser(id);
+      const { data, error } = await supabase.functions.invoke('gerenciar-usuarios', {
+        body: { acao: 'deletar', userId: id }
+      });
+
       if (error) throw new Error(error.message);
+      if (data?.error) throw new Error(data.error);
     },
     onSuccess: () => {
       toast.success('Usuário removido!');
@@ -60,21 +70,21 @@ export default function GerenciarEquipe() {
     onError: (err: any) => toast.error(`Erro ao deletar: ${err.message}`)
   });
 
-  // 4. Mutação para Editar Usuário
+  // 4. Mutação para Editar Usuário (Ligada na Edge Function)
   const mutationEditar = useMutation({
     mutationFn: async (dados: { id: string; nome: string; role: string; senha?: string }) => {
-      // Atualiza a tabela visível
-      const { error: erroPerfil } = await supabase.from('perfis').update({ nome: dados.nome, role: dados.role }).eq('id', dados.id);
-      if (erroPerfil) throw new Error(erroPerfil.message);
+      const { data, error } = await supabase.functions.invoke('gerenciar-usuarios', {
+        body: { 
+          acao: 'editar', 
+          userId: dados.id,
+          nome: dados.nome,
+          role: dados.role,
+          senha: dados.senha
+        }
+      });
 
-      // Atualiza os dados no cofre de autenticação (e a senha, se foi digitada uma nova)
-      const updateData: any = { user_metadata: { nome: dados.nome, role: dados.role } };
-      if (dados.senha && dados.senha.trim().length > 0) {
-        updateData.password = dados.senha;
-      }
-
-      const { error: erroAuth } = await supabaseAdmin.auth.admin.updateUserById(dados.id, updateData);
-      if (erroAuth) throw new Error(erroAuth.message);
+      if (error) throw new Error(error.message);
+      if (data?.error) throw new Error(data.error);
     },
     onSuccess: () => {
       toast.success('Usuário atualizado com sucesso!');
@@ -197,7 +207,7 @@ export default function GerenciarEquipe() {
   );
 }
 
-// Componente interno para o formulário de edição (igual ao de materiais)
+// Componente interno
 function EditarUsuarioForm({ usuario, onSalvar, onCancelar, salvando }: {
   usuario: Perfil;
   onSalvar: (d: { id: string; nome: string; role: string; senha?: string }) => void;
