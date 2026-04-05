@@ -287,7 +287,7 @@ export default function Campo() {
                       className={`group text-left p-3.5 rounded-xl border transition-smooth relative overflow-hidden ${
                         sel
                           ? 'border-blue-400 bg-blue-50 ring-1 ring-blue-400/30'
-                          : 'border-gray-150 bg-white hover:border-blue-200 hover:bg-blue-50/40'
+                          : 'border-gray-200 bg-white hover:border-blue-200 hover:bg-blue-50/40'
                       }`}
                     >
                       {sel && (
