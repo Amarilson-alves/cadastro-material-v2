@@ -8,7 +8,10 @@ import { useBuscaMateriais } from '@/hooks/useMateriais';
 import { exportarObrasExcel } from '@/utils/exportExcel';
 import type { FiltrosObra, Material } from '@/types';
 import { formatarData, formatSKU } from '@/lib/utils';
-import { ArrowLeft, Search, Download, Plus, Trash2, Edit2, Settings, Package, FileSpreadsheet, Loader2, X, Users } from 'lucide-react';
+import {
+  ArrowLeft, Search, Download, Plus, Trash2, Edit2, Settings,
+  Package, FileSpreadsheet, Loader2, X, Users, ChevronDown, ChevronRight,
+} from 'lucide-react';
 import GerenciarEquipe from '@/components/GerenciarEquipe';
 
 const FILTROS_VAZIOS: FiltrosObra = {
@@ -21,9 +24,12 @@ export default function Interno() {
   const [aba, setAba] = useState<Aba>('consultar');
   const [filtros, setFiltros] = useState<FiltrosObra>(FILTROS_VAZIOS);
   const [buscarAtivado, setBuscarAtivado] = useState(false);
-  const [novoMaterial, setNovoMaterial] = useState({ mat_code: '', sku: '', descricao: '', unidade: '', categoria: 'Interno' as 'Interno' | 'Externo' });
+  const [novoMaterial, setNovoMaterial] = useState({
+    mat_code: '', sku: '', descricao: '', unidade: '', categoria: 'Interno' as 'Interno' | 'Externo',
+  });
   const [buscaGerenciar, setBuscaGerenciar] = useState('');
   const [editando, setEditando] = useState<Material | null>(null);
+  const [obraExpandida, setObraExpandida] = useState<string | null>(null);
   const queryClient = useQueryClient();
 
   const { data: obras = [], isFetching } = useQuery({
@@ -68,8 +74,13 @@ export default function Interno() {
 
   const f = (key: keyof FiltrosObra, val: string) => setFiltros(p => ({ ...p, [key]: val }));
 
+  const toggleObra = (id: string) =>
+    setObraExpandida(prev => (prev === id ? null : id));
+
   return (
     <div className="min-h-screen bg-[#f5f6fa]">
+
+      {/* ── Header ── */}
       <header className="bg-[#0f172a] text-white sticky top-0 z-20 shadow-lg border-b-2 border-green-500/60">
         <div className="max-w-4xl mx-auto px-4 py-3.5 flex items-center gap-3">
           <Link to="/" className="p-2 rounded-xl bg-white/10 hover:bg-white/20 transition-smooth">
@@ -81,33 +92,33 @@ export default function Interno() {
             </div>
             <div>
               <h1 className="text-sm font-bold leading-tight">Administração</h1>
-              <p className="text-green-300 text-xs leading-tight">Consulta, exportação e gestão</p>
+              <p className="text-green-300/70 text-xs leading-tight">Consulta, exportação e gestão</p>
             </div>
           </div>
         </div>
       </header>
 
       <main className="max-w-4xl mx-auto px-4 py-6">
-        {/* Abas */}
-        <div className="flex gap-1 bg-white border border-gray-200 rounded-2xl p-1 mb-6 shadow-sm flex-wrap sm:flex-nowrap">
+
+        {/* ── Tabs underline ── */}
+        <div className="flex border-b border-gray-200 mb-6">
           <TabBtn active={aba === 'consultar'} onClick={() => setAba('consultar')} icon={<FileSpreadsheet className="h-4 w-4" />}>
-            Consultar Obras
+            Consultar obras
           </TabBtn>
           <TabBtn active={aba === 'materiais'} onClick={() => setAba('materiais')} icon={<Package className="h-4 w-4" />}>
-            Gerenciar Materiais
+            Gerenciar materiais
           </TabBtn>
           <TabBtn active={aba === 'equipe'} onClick={() => setAba('equipe')} icon={<Users className="h-4 w-4" />}>
-            Gerenciar Equipe
+            Gerenciar equipe
           </TabBtn>
         </div>
 
-        {/* ABA: CONSULTAR */}
+        {/* ══ ABA: CONSULTAR ══ */}
         {aba === 'consultar' && (
           <div className="space-y-5 animate-fade-in">
             <div className="card p-6">
-              <h2 className="text-sm font-bold text-gray-500 uppercase tracking-widest mb-5">Filtros de Busca</h2>
-              
-              {/* 👇 Grid reformulado para 4 colunas virtuais e alinhamento perfeito */}
+              <h2 className="text-sm font-semibold text-slate-600 mb-5">Filtros de busca</h2>
+
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                 <div className="lg:col-span-1">
                   <FilterInput placeholder="Técnico" value={filtros.tecnico} onChange={v => f('tecnico', v)} />
@@ -118,11 +129,11 @@ export default function Interno() {
                 <div className="lg:col-span-2">
                   <FilterInput placeholder="Endereço" value={filtros.endereco} onChange={v => f('endereco', v)} />
                 </div>
-                
+
                 <div className="lg:col-span-1">
                   <select value={filtros.uf} onChange={e => f('uf', e.target.value)} className={sc}>
                     <option value="todos">Todas as UFs</option>
-                    {['PR','PRI','SC','RS'].map(uf => <option key={uf} value={uf}>{uf}</option>)}
+                    {['PR', 'PRI', 'SC', 'RS'].map(uf => <option key={uf} value={uf}>{uf}</option>)}
                   </select>
                 </div>
                 <div className="lg:col-span-1">
@@ -142,53 +153,100 @@ export default function Interno() {
                 <button
                   onClick={() => { setBuscarAtivado(true); queryClient.invalidateQueries({ queryKey: ['obras'] }); }}
                   disabled={isFetching}
-                  className="flex items-center gap-2 bg-[#14532d] hover:bg-green-800 text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition-smooth shadow-sm">
+                  className="flex items-center gap-2 bg-[#0f172a] hover:bg-[#1e293b] text-white text-sm font-medium px-5 py-2.5 rounded-xl transition-smooth shadow-sm"
+                >
                   {isFetching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
-                  {isFetching ? 'Buscando...' : 'Buscar Obras'}
+                  {isFetching ? 'Buscando...' : 'Buscar obras'}
                 </button>
-                <button onClick={() => exportarObrasExcel(obras)} disabled={obras.length === 0}
-                  className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-40 text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition-smooth shadow-sm">
+                <button
+                  onClick={() => exportarObrasExcel(obras)}
+                  disabled={obras.length === 0}
+                  className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-40 text-white text-sm font-medium px-5 py-2.5 rounded-xl transition-smooth shadow-sm"
+                >
                   <Download className="h-4 w-4" /> Exportar Excel
                 </button>
-                <button onClick={() => { setFiltros(FILTROS_VAZIOS); setBuscarAtivado(false); }}
-                  className="flex items-center gap-2 border border-gray-200 hover:bg-gray-50 text-gray-600 text-sm font-semibold px-5 py-2.5 rounded-xl transition-smooth">
+                <button
+                  onClick={() => { setFiltros(FILTROS_VAZIOS); setBuscarAtivado(false); setObraExpandida(null); }}
+                  className="flex items-center gap-2 border border-gray-200 hover:bg-gray-50 text-gray-600 text-sm font-medium px-5 py-2.5 rounded-xl transition-smooth"
+                >
                   <X className="h-4 w-4" /> Limpar
                 </button>
               </div>
             </div>
 
+            {/* Tabela com accordion */}
             {obras.length > 0 && (
               <div className="card overflow-hidden animate-slide-up">
                 <div className="px-6 py-3 bg-gray-50 border-b border-gray-100 flex items-center justify-between">
-                  <span className="text-sm font-semibold text-gray-600">{obras.length} obras encontradas</span>
+                  <span className="text-sm font-medium text-gray-600">
+                    {obras.length} {obras.length === 1 ? 'obra encontrada' : 'obras encontradas'}
+                  </span>
                 </div>
                 <div className="overflow-x-auto">
                   <table className="min-w-full">
                     <thead>
                       <tr className="border-b border-gray-100">
-                        {['Data','Técnico','Cidade','Endereço','UF','Tipo','Materiais'].map(h => (
-                          <th key={h} className="px-4 py-3 text-left text-xs font-bold text-gray-400 uppercase tracking-wider whitespace-nowrap">{h}</th>
+                        {['Data', 'Técnico', 'Cidade', 'Endereço', 'UF', 'Tipo', 'Materiais', ''].map(h => (
+                          <th key={h} className="px-4 py-3 text-left text-xs font-medium text-gray-400 whitespace-nowrap">{h}</th>
                         ))}
                       </tr>
                     </thead>
                     <tbody>
-                      {obras.map((obra, i) => (
-                        <tr key={obra.id} className={`border-b border-gray-50 hover:bg-blue-50/40 transition-smooth ${i % 2 === 0 ? '' : 'bg-gray-50/50'}`}>
-                          <td className="px-4 py-3 text-sm text-gray-500 whitespace-nowrap font-mono text-xs">{formatarData(obra.criado_em)}</td>
-                          <td className="px-4 py-3 text-sm font-medium text-gray-800">{obra.tecnico}</td>
-                          <td className="px-4 py-3 text-sm text-gray-600">{obra.cidade}</td>
-                          <td className="px-4 py-3 text-sm text-gray-600">{obra.endereco}, {obra.numero}</td>
-                          <td className="px-4 py-3">
-                            <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs font-bold rounded-full">{obra.uf}</span>
-                          </td>
-                          <td className="px-4 py-3 text-sm text-gray-600">{obra.tipo_obra}</td>
-                          <td className="px-4 py-3">
-                            <span className="px-2 py-0.5 bg-gray-100 text-gray-600 text-xs font-semibold rounded-full">
-                              {obra.materiais_utilizados?.length ?? 0} itens
-                            </span>
-                          </td>
-                        </tr>
-                      ))}
+                      {obras.map((obra, i) => {
+                        const expandida = obraExpandida === obra.id;
+                        const qtdMateriais = obra.materiais_utilizados?.length ?? 0;
+                        return (
+                          <>
+                            <tr
+                              key={obra.id}
+                              onClick={() => qtdMateriais > 0 && toggleObra(obra.id)}
+                              className={`border-b border-gray-50 transition-smooth ${i % 2 === 0 ? '' : 'bg-gray-50/50'} ${qtdMateriais > 0 ? 'cursor-pointer hover:bg-blue-50/40' : ''}`}
+                            >
+                              <td className="px-4 py-3 text-xs text-gray-400 whitespace-nowrap font-mono">{formatarData(obra.criado_em)}</td>
+                              <td className="px-4 py-3 text-sm font-medium text-gray-800">{obra.tecnico}</td>
+                              <td className="px-4 py-3 text-sm text-gray-600">{obra.cidade}</td>
+                              <td className="px-4 py-3 text-sm text-gray-600">{obra.endereco}, {obra.numero}</td>
+                              <td className="px-4 py-3">
+                                <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs font-semibold rounded-full">{obra.uf}</span>
+                              </td>
+                              <td className="px-4 py-3 text-sm text-gray-600">{obra.tipo_obra}</td>
+                              <td className="px-4 py-3">
+                                <span className="px-2 py-0.5 bg-gray-100 text-gray-600 text-xs font-medium rounded-full">
+                                  {qtdMateriais} {qtdMateriais === 1 ? 'item' : 'itens'}
+                                </span>
+                              </td>
+                              <td className="px-4 py-3 text-gray-400">
+                                {qtdMateriais > 0 && (
+                                  expandida
+                                    ? <ChevronDown className="h-4 w-4" />
+                                    : <ChevronRight className="h-4 w-4" />
+                                )}
+                              </td>
+                            </tr>
+
+                            {/* Linha expandida com materiais */}
+                            {expandida && obra.materiais_utilizados && obra.materiais_utilizados.length > 0 && (
+                              <tr key={`${obra.id}-expand`} className="bg-slate-50 border-b border-gray-100">
+                                <td colSpan={8} className="px-6 py-3">
+                                  <div className="flex flex-wrap gap-2">
+                                    {obra.materiais_utilizados.map((m, idx) => (
+                                      <div
+                                        key={idx}
+                                        className="flex items-center gap-2 bg-white border border-gray-200 rounded-lg px-3 py-1.5 text-xs"
+                                      >
+                                        <span className="font-mono text-gray-400">{m.mat_code || m.sku}</span>
+                                        <span className="text-gray-700 font-medium truncate max-w-[180px]">{m.descricao}</span>
+                                        <span className="text-slate-400">·</span>
+                                        <span className="font-semibold text-slate-700">{m.quantidade} {m.unidade}</span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </td>
+                              </tr>
+                            )}
+                          </>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
@@ -204,60 +262,74 @@ export default function Interno() {
           </div>
         )}
 
-        {/* ABA: MATERIAIS */}
+        {/* ══ ABA: MATERIAIS ══ */}
         {aba === 'materiais' && (
           <div className="space-y-5 animate-fade-in">
-            {/* Adicionar */}
+
+            {/* Adicionar novo material */}
             <div className="card p-6">
-              <h2 className="text-sm font-bold text-gray-500 uppercase tracking-widest mb-5 flex items-center gap-2">
-                <Plus className="h-4 w-4" /> Adicionar Novo Material
-              </h2>
-              {/* Cabeçalho visual igual à planilha */}
-              <div className="hidden sm:grid grid-cols-5 gap-3 text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 px-1">
-                <span>Mat Code</span><span>SKU</span><span>Descrição do Material</span><span>Unidade</span><span>Categoria</span>
+              <h2 className="text-sm font-semibold text-slate-600 mb-5">Adicionar novo material</h2>
+
+              {/* Cabeçalhos das colunas */}
+              <div className="hidden sm:grid grid-cols-5 gap-3 text-[10px] font-medium text-gray-400 uppercase tracking-wider mb-1.5 px-1">
+                <span>Mat Code</span><span>SKU</span><span>Descrição</span><span>Unidade</span><span>Categoria</span>
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-                <input placeholder="MAT-001" value={novoMaterial.mat_code}
+                <input
+                  placeholder="MAT-001"
+                  value={novoMaterial.mat_code}
                   onChange={e => setNovoMaterial({...novoMaterial, mat_code: e.target.value.toUpperCase()})}
-                  className={ic} />
-                <input placeholder="0001-0001-1" value={novoMaterial.sku}
+                  className={ic}
+                />
+                <input
+                  placeholder="0001-0001-1"
+                  value={novoMaterial.sku}
                   onChange={e => setNovoMaterial({...novoMaterial, sku: formatSKU(e.target.value)})}
-                  maxLength={11} className={ic} />
-                <input placeholder="Nome do material" value={novoMaterial.descricao}
+                  maxLength={11}
+                  className={ic}
+                />
+                <input
+                  placeholder="Nome do material"
+                  value={novoMaterial.descricao}
                   onChange={e => setNovoMaterial({...novoMaterial, descricao: e.target.value})}
-                  className={`${ic} sm:col-span-1`} />
-                <select value={novoMaterial.unidade}
-                  onChange={e => setNovoMaterial({...novoMaterial, unidade: e.target.value})} className={ic}>
+                  className={`${ic} sm:col-span-1`}
+                />
+                <select value={novoMaterial.unidade} onChange={e => setNovoMaterial({...novoMaterial, unidade: e.target.value})} className={ic}>
                   <option value="">Unidade</option>
                   {['KG','UN','MT','CX','U','M','UNI','CJ','RL','ROL'].map(u => <option key={u} value={u}>{u}</option>)}
                 </select>
-                <select value={novoMaterial.categoria}
-                  onChange={e => setNovoMaterial({...novoMaterial, categoria: e.target.value as 'Interno'|'Externo'})} className={ic}>
+                <select value={novoMaterial.categoria} onChange={e => setNovoMaterial({...novoMaterial, categoria: e.target.value as 'Interno'|'Externo'})} className={ic}>
                   <option value="Interno">Interno</option>
                   <option value="Externo">Externo</option>
                 </select>
               </div>
-              <button onClick={() => {
-                if (!novoMaterial.mat_code) return toast.error('Mat Code obrigatório.');
-                if (!novoMaterial.sku) return toast.error('SKU obrigatório.');
-                if (!novoMaterial.descricao) return toast.error('Descrição obrigatória.');
-                if (!novoMaterial.unidade) return toast.error('Unidade obrigatória.');
-                addMutation.mutate(novoMaterial);
-              }} disabled={addMutation.isPending}
-                className="mt-4 flex items-center gap-2 bg-[#14532d] hover:bg-green-800 text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition-smooth shadow-sm">
+              <button
+                onClick={() => {
+                  if (!novoMaterial.mat_code) return toast.error('Mat Code obrigatório.');
+                  if (!novoMaterial.sku) return toast.error('SKU obrigatório.');
+                  if (!novoMaterial.descricao) return toast.error('Descrição obrigatória.');
+                  if (!novoMaterial.unidade) return toast.error('Unidade obrigatória.');
+                  addMutation.mutate(novoMaterial);
+                }}
+                disabled={addMutation.isPending}
+                className="mt-4 flex items-center gap-2 bg-[#0f172a] hover:bg-[#1e293b] text-white text-sm font-medium px-5 py-2.5 rounded-xl transition-smooth shadow-sm"
+              >
                 {addMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
-                {addMutation.isPending ? 'Cadastrando...' : 'Cadastrar Material'}
+                {addMutation.isPending ? 'Cadastrando...' : 'Cadastrar material'}
               </button>
             </div>
 
             {/* Buscar e editar */}
             <div className="card p-6">
-              <h2 className="text-sm font-bold text-gray-500 uppercase tracking-widest mb-4">Buscar e Editar</h2>
+              <h2 className="text-sm font-semibold text-slate-600 mb-4">Buscar e editar</h2>
               <div className="relative mb-4">
                 <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <input value={buscaGerenciar} onChange={e => setBuscaGerenciar(e.target.value)}
+                <input
+                  value={buscaGerenciar}
+                  onChange={e => setBuscaGerenciar(e.target.value)}
                   placeholder="Buscar por Mat Code, SKU ou descrição..."
-                  className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-green-500/30 focus:border-green-400 transition-smooth" />
+                  className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-smooth"
+                />
               </div>
 
               {buscando && (
@@ -268,21 +340,24 @@ export default function Interno() {
 
               {materiaisEncontrados.length > 0 && (
                 <div className="space-y-1.5">
-                  <div className="hidden sm:grid grid-cols-6 gap-2 text-[10px] font-bold text-gray-400 uppercase tracking-widest px-3 mb-1">
-                    <span>Mat Code</span><span>SKU</span><span className="col-span-2">Descrição</span><span>Unid/Estq</span><span className="text-right">Ações</span>
+                  <div className="hidden sm:grid grid-cols-6 gap-2 text-[10px] font-medium text-gray-400 uppercase tracking-wider px-3 mb-2">
+                    <span>Mat Code</span><span>SKU</span><span className="col-span-2">Descrição</span><span>Unid / Estq</span><span className="text-right">Ações</span>
                   </div>
                   {materiaisEncontrados.map(mat => (
                     <div key={mat.sku}>
                       {editando?.sku === mat.sku
-                        ? <EditarForm material={editando}
+                        ? (
+                          <EditarForm
+                            material={editando}
                             onSalvar={dados => updateMutation.mutate({ sku: mat.sku, dados })}
                             onCancelar={() => setEditando(null)}
-                            salvando={updateMutation.isPending} />
-                        : (
+                            salvando={updateMutation.isPending}
+                          />
+                        ) : (
                           <div className="grid grid-cols-2 sm:grid-cols-6 gap-2 items-center p-3 rounded-xl border border-gray-100 bg-gray-50/50 hover:bg-white hover:border-gray-200 hover:shadow-sm transition-smooth text-sm group">
                             <span className="font-mono text-[11px] bg-gray-100 text-gray-600 px-2 py-1 rounded-lg w-fit font-medium">{mat.mat_code}</span>
                             <span className="font-mono text-[11px] text-gray-400">{mat.sku}</span>
-                            <span className="col-span-2 font-semibold text-gray-800 truncate">{mat.descricao}</span>
+                            <span className="col-span-2 font-medium text-gray-800 truncate">{mat.descricao}</span>
                             <span className="text-xs text-gray-400">{mat.unidade} · <span className="text-gray-600 font-semibold">{mat.quantidade}</span></span>
                             <div className="flex gap-1.5 justify-end">
                               <button onClick={() => setEditando(mat)}
@@ -303,44 +378,56 @@ export default function Interno() {
               )}
 
               {buscaGerenciar && !buscando && materiaisEncontrados.length === 0 && (
-                <p className="text-gray-400 text-sm text-center py-8">Nenhum material encontrado.</p>
+                <div className="flex flex-col items-center py-10 text-gray-400 gap-2">
+                  <Package className="h-9 w-9 opacity-30" />
+                  <p className="text-sm">Nenhum material encontrado.</p>
+                </div>
               )}
             </div>
           </div>
         )}
 
-        {/* ABA: EQUIPE */}
-        {aba === 'equipe' && (
-          <GerenciarEquipe />
-        )}
+        {/* ══ ABA: EQUIPE ══ */}
+        {aba === 'equipe' && <GerenciarEquipe />}
 
       </main>
     </div>
   );
 }
 
+// ── Tab underline ──────────────────────────────────────────────────────────────
 function TabBtn({ active, onClick, children, icon }: {
   active: boolean; onClick: () => void; children: React.ReactNode; icon: React.ReactNode;
 }) {
   return (
-    <button onClick={onClick}
-      className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold transition-smooth ${
+    <button
+      onClick={onClick}
+      className={`flex items-center gap-2 px-5 py-3 text-sm font-medium border-b-2 transition-smooth -mb-px ${
         active
-          ? 'bg-[#1e3a5f] text-white shadow-sm'
-          : 'text-gray-400 hover:text-gray-600 hover:bg-gray-50'
-      }`}>
+          ? 'border-[#0f172a] text-[#0f172a]'
+          : 'border-transparent text-gray-400 hover:text-gray-600 hover:border-gray-300'
+      }`}
+    >
       {icon}{children}
     </button>
   );
 }
 
-function FilterInput({ placeholder, value, onChange }: { placeholder: string; value: string; onChange: (v: string) => void }) {
+// ── Input de filtro ────────────────────────────────────────────────────────────
+function FilterInput({ placeholder, value, onChange }: {
+  placeholder: string; value: string; onChange: (v: string) => void;
+}) {
   return (
-    <input placeholder={placeholder} value={value} onChange={e => onChange(e.target.value)}
-      className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-green-500/30 focus:border-green-400 transition-smooth" />
+    <input
+      placeholder={placeholder}
+      value={value}
+      onChange={e => onChange(e.target.value)}
+      className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-smooth"
+    />
   );
 }
 
+// ── Form de edição inline ──────────────────────────────────────────────────────
 function EditarForm({ material, onSalvar, onCancelar, salvando }: {
   material: Material;
   onSalvar: (d: { mat_code: string; descricao: string; unidade: string; quantidade: number }) => void;
@@ -348,12 +435,15 @@ function EditarForm({ material, onSalvar, onCancelar, salvando }: {
   salvando: boolean;
 }) {
   const [dados, setDados] = useState({
-    mat_code: material.mat_code, descricao: material.descricao,
-    unidade: material.unidade, quantidade: material.quantidade,
+    mat_code: material.mat_code,
+    descricao: material.descricao,
+    unidade: material.unidade,
+    quantidade: material.quantidade,
   });
+
   return (
-    <div className="border-2 border-blue-200 rounded-2xl p-4 bg-blue-50/50 space-y-3 animate-fade-in">
-      <div className="text-xs font-bold text-blue-600 uppercase tracking-wide">Editando SKU: {material.sku}</div>
+    <div className="border border-blue-200 rounded-2xl p-4 bg-blue-50/40 space-y-3 animate-fade-in">
+      <div className="text-xs font-medium text-blue-600">Editando SKU: {material.sku}</div>
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <input value={dados.mat_code} onChange={e => setDados({...dados, mat_code: e.target.value.toUpperCase()})} className={ic} placeholder="Mat Code" />
         <input value={dados.descricao} onChange={e => setDados({...dados, descricao: e.target.value})} className={`${ic} sm:col-span-1`} placeholder="Descrição" />
@@ -364,11 +454,12 @@ function EditarForm({ material, onSalvar, onCancelar, salvando }: {
       </div>
       <div className="flex gap-2">
         <button onClick={() => onSalvar(dados)} disabled={salvando}
-          className="flex items-center gap-1.5 bg-blue-600 text-white text-sm font-semibold px-4 py-2 rounded-xl hover:bg-blue-700 transition-smooth">
+          className="flex items-center gap-1.5 bg-blue-600 text-white text-sm font-medium px-4 py-2 rounded-xl hover:bg-blue-700 transition-smooth">
           {salvando ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
           {salvando ? 'Salvando...' : 'Salvar'}
         </button>
-        <button onClick={onCancelar} className="border border-gray-200 text-gray-600 text-sm font-semibold px-4 py-2 rounded-xl hover:bg-white transition-smooth">
+        <button onClick={onCancelar}
+          className="border border-gray-200 text-gray-600 text-sm font-medium px-4 py-2 rounded-xl hover:bg-white transition-smooth">
           Cancelar
         </button>
       </div>
@@ -376,5 +467,5 @@ function EditarForm({ material, onSalvar, onCancelar, salvando }: {
   );
 }
 
-const ic = 'w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-green-500/30 focus:border-green-400 transition-smooth';
+const ic = 'w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-smooth';
 const sc = ic;
