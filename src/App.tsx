@@ -10,6 +10,7 @@ import Login from '@/pages/Login';
 import Index from '@/pages/Index';
 import Campo from '@/pages/Campo';
 import Interno from '@/pages/Interno';
+import AutoLogout from '@/components/AutoLogout'; // 👈 NOSSO FANTASMA IMPORTADO AQUI
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -45,6 +46,10 @@ export default function App() {
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
         <Toaster position="top-right" richColors />
+        
+        {/* 👇 O FANTASMA: Fica ouvindo inatividade de forma global em qualquer tela */}
+        <AutoLogout /> 
+
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route path="/" element={<RotaProtegida><Index /></RotaProtegida>} />
