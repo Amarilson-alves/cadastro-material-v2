@@ -28,7 +28,7 @@ export default function AutoLogout() {
     // ⚙️ CONFIGURAÇÃO DO TEMPO AQUI
     // ==========================================
     // 1 minuto = 1 * 60 * 1000 milissegundos (Para teste)
-    const TEMPO_INATIVIDADE = 1 * 60 * 1000; 
+    const TEMPO_INATIVIDADE = 30 * 60 * 1000; 
 
     timeoutRef.current = setTimeout(fazerLogout, TEMPO_INATIVIDADE);
   };
