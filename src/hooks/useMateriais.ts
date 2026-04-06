@@ -1,18 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { getMateriais, buscarMateriais } from '@/services/materials';
+import { buscarMateriais } from '@/services/materials';
 
-// Hook para buscar todos os materiais (com cache de 5 minutos)
-export function useMateriais() {
-  return useQuery({
-    queryKey: ['materiais'],
-    queryFn: getMateriais,
-    staleTime: 5 * 60 * 1000,
-    retry: 2,
-  });
-}
-
-// Hook para busca com debounce
+// Hook para busca com debounce — usado no Interno para gerenciar materiais
 export function useBuscaMateriais(query: string) {
   const [termoDebouncado, setTermoDebouncado] = useState(query);
 

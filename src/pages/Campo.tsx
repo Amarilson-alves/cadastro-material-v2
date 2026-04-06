@@ -372,7 +372,7 @@ export default function Campo() {
             }
           </button>
           <button
-            onClick={() => { setForm(FORM_VAZIO); setMateriais([]); setBusca(''); }}
+            onClick={() => { if (window.confirm('Limpar o formulário e todos os materiais selecionados?')) { setForm(FORM_VAZIO); setMateriais([]); setBusca(''); } }}
             className="px-5 border border-gray-200 text-gray-500 hover:bg-gray-100 font-medium rounded-2xl transition-smooth text-sm"
           >
             Limpar

@@ -1,6 +1,3 @@
-// =============================================
-// SERVIÇO DE MATERIAIS
-// =============================================
 import { supabase } from '@/lib/supabase';
 import type { Material } from '@/types';
 
@@ -29,12 +26,12 @@ export async function adicionarMaterial(
   material: Omit<Material, 'quantidade'> & { quantidade?: number }
 ): Promise<void> {
   const { error } = await supabase.from('materiais').insert({
-    mat_code: material.mat_code.trim().toUpperCase(),
-    sku:      material.sku.trim().toUpperCase(),
+    mat_code:  material.mat_code.trim().toUpperCase(),
+    sku:       material.sku.trim().toUpperCase(),
     descricao: material.descricao.trim(),
-    unidade:  material.unidade,
+    unidade:   material.unidade,
     quantidade: Number(material.quantidade) || 0,
-    categoria: material.categoria,
+    categoria:  material.categoria,
   });
   if (error) {
     if (error.code === '23505') throw new Error('Já existe um material com este SKU.');
@@ -49,32 +46,10 @@ export async function atualizarMaterial(
   const { error } = await supabase
     .from('materiais')
     .update({
-      mat_code:  dados.mat_code.trim().toUpperCase(),
-      descricao: dados.descricao.trim(),
-      unidade:   dados.unidade,
+      mat_code:   dados.mat_code.trim().toUpperCase(),
+      descricao:  dados.descricao.trim(),
+      unidade:    dados.unidade,
       quantidade: Number(dados.quantidade) || 0,
-      // REMOVIDO: atualizado_em - Esta coluna não existe no seu banco de dados
-    })
-    .eq('sku', sku);
-  if (error) throw new Error(error.message);
-}
-
-export async function incrementarMaterial(sku: string, delta: number): Promise<void> {
-  const { data, error: fetchError } = await supabase
-    .from('materiais')
-    .select('quantidade')
-    .eq('sku', sku)
-    .single();
-  if (fetchError) throw new Error(fetchError.message);
-
-  const novaQuantidade = (data?.quantidade ?? 0) + delta;
-  if (novaQuantidade < 0) throw new Error('Quantidade não pode ficar negativa.');
-
-  const { error } = await supabase
-    .from('materiais')
-    .update({ 
-      quantidade: novaQuantidade 
-      // REMOVIDO: atualizado_em - Esta coluna não existe no seu banco de dados
     })
     .eq('sku', sku);
   if (error) throw new Error(error.message);

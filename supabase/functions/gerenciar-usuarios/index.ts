@@ -1,7 +1,10 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.43.4'
 
+// Domínio do seu app — única origem permitida
+const ALLOWED_ORIGIN = 'https://cadastro-material-v2.vercel.app'
+
 const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Origin': ALLOWED_ORIGIN,
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
@@ -35,20 +38,13 @@ Deno.serve(async (req) => {
     )
 
     if (acao === 'criar') {
-      // 🚨 CORREÇÃO: Voltamos a mandar o user_metadata para alimentar o seu gatilho automático!
       const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
         email,
         password,
         email_confirm: true,
-        user_metadata: { 
-          nome: nome, 
-          matricula: matricula, 
-          role: role 
-        }
+        user_metadata: { nome, matricula, role }
       })
       if (authError) throw authError
-
-      // Removemos o insert manual na tabela 'perfis' porque o seu banco já faz isso sozinho!
 
       return new Response(JSON.stringify({ success: true, user: authData.user }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -57,16 +53,11 @@ Deno.serve(async (req) => {
     }
 
     if (acao === 'editar') {
-      const { error: profileError } = await supabaseAdmin.from('perfis').update({
-        nome,
-        role
-      }).eq('id', userId)
+      const { error: profileError } = await supabaseAdmin.from('perfis').update({ nome, role }).eq('id', userId)
       if (profileError) throw profileError
 
       const updateData: any = { user_metadata: { nome, role } }
-      if (senha && senha.trim().length > 0) {
-        updateData.password = senha
-      }
+      if (senha && senha.trim().length > 0) updateData.password = senha
 
       const { error: authError } = await supabaseAdmin.auth.admin.updateUserById(userId, updateData)
       if (authError) throw authError
@@ -78,10 +69,10 @@ Deno.serve(async (req) => {
     }
 
     if (acao === 'deletar') {
-       const { error } = await supabaseAdmin.auth.admin.deleteUser(userId)
-       if (error) throw error
+      const { error } = await supabaseAdmin.auth.admin.deleteUser(userId)
+      if (error) throw error
 
-       return new Response(JSON.stringify({ success: true }), {
+      return new Response(JSON.stringify({ success: true }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 200,
       })
@@ -90,10 +81,10 @@ Deno.serve(async (req) => {
     throw new Error('Ação não reconhecida.')
 
   } catch (error: any) {
-    console.error("ERRO NO COFRE:", error.message)
+    console.error('ERRO NO COFRE:', error.message)
     return new Response(JSON.stringify({ error: error.message }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      status: 400, // Voltei para o padrão correto do sistema
+      status: 400,
     })
   }
 })

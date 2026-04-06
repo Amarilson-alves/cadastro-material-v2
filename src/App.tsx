@@ -1,6 +1,3 @@
-// =============================================
-// APP — Roteamento com proteção de autenticação e Cargos
-// =============================================
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from 'sonner';
@@ -10,7 +7,7 @@ import Login from '@/pages/Login';
 import Index from '@/pages/Index';
 import Campo from '@/pages/Campo';
 import Interno from '@/pages/Interno';
-import AutoLogout from '@/components/AutoLogout'; // 👈 NOSSO FANTASMA IMPORTADO AQUI
+import AutoLogout from '@/components/AutoLogout';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -18,7 +15,7 @@ const queryClient = new QueryClient({
   },
 });
 
-// 🛡️ Guarda de rota atualizada com controle de nível (Staff vs Técnico)
+// AutoLogout montado apenas dentro de rotas protegidas — não roda na tela de Login
 function RotaProtegida({ children, requireStaff = false }: { children: React.ReactNode, requireStaff?: boolean }) {
   const { user, perfil, carregando } = useAuth();
 
@@ -30,15 +27,18 @@ function RotaProtegida({ children, requireStaff = false }: { children: React.Rea
     );
   }
 
-  // Se não tem login, vai pro Login
   if (!user) return <Navigate to="/login" replace />;
-  
-  // Se a tela exige Staff, mas o usuário é só técnico, volta pro Início
+
   if (requireStaff && perfil?.role !== 'staff') {
     return <Navigate to="/" replace />;
   }
 
-  return <>{children}</>;
+  return (
+    <>
+      <AutoLogout />
+      {children}
+    </>
+  );
 }
 
 export default function App() {
@@ -46,15 +46,10 @@ export default function App() {
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
         <Toaster position="top-right" richColors />
-        
-        {/* 👇 O FANTASMA: Fica ouvindo inatividade de forma global em qualquer tela */}
-        <AutoLogout /> 
-
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route path="/" element={<RotaProtegida><Index /></RotaProtegida>} />
           <Route path="/campo" element={<RotaProtegida><Campo /></RotaProtegida>} />
-          {/* 👇 AQUI ESTÁ A MÁGICA: Protegendo a rota interna! */}
           <Route path="/interno" element={<RotaProtegida requireStaff><Interno /></RotaProtegida>} />
         </Routes>
       </BrowserRouter>
