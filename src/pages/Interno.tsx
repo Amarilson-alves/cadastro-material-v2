@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
@@ -15,6 +15,9 @@ import {
   CheckCircle, Clock, AlertCircle,
 } from 'lucide-react';
 import GerenciarEquipe from '@/components/GerenciarEquipe';
+
+const ic = 'w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-smooth';
+const sc = ic;
 
 const FILTROS_VAZIOS: FiltrosObra = {
   endereco: '', tecnico: '', cidade: '', uf: 'todos', tipo_obra: 'todos',
@@ -643,7 +646,3 @@ function EditarMaterialForm({ material, onSalvar, onCancelar, salvando }: {
     </div>
   );
 }
-
-import React from 'react';
-const ic = 'w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-smooth';
-const sc = ic;
