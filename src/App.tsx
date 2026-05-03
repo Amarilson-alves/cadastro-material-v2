@@ -17,7 +17,8 @@ const queryClient = new QueryClient({
 
 // AutoLogout montado apenas dentro de rotas protegidas — não roda na tela de Login
 function RotaProtegida({ children, requireStaff = false }: { children: React.ReactNode, requireStaff?: boolean }) {
-  const { user, perfil, carregando } = useAuth();
+  // Usamos o isStaff aqui, que já verifica se é 'staff' ou 'master'
+  const { user, isStaff, carregando } = useAuth();
 
   if (carregando) {
     return (
@@ -29,7 +30,8 @@ function RotaProtegida({ children, requireStaff = false }: { children: React.Rea
 
   if (!user) return <Navigate to="/login" replace />;
 
-  if (requireStaff && perfil?.role !== 'staff') {
+  // CORREÇÃO: Agora permitimos a entrada se for staff OU master
+  if (requireStaff && !isStaff) {
     return <Navigate to="/" replace />;
   }
 
@@ -51,6 +53,7 @@ export default function App() {
           <Route path="/" element={<RotaProtegida><Index /></RotaProtegida>} />
           <Route path="/campo" element={<RotaProtegida><Campo /></RotaProtegida>} />
           <Route path="/interno" element={<RotaProtegida requireStaff><Interno /></RotaProtegida>} />
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </BrowserRouter>
     </QueryClientProvider>
