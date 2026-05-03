@@ -3,9 +3,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { HardHat, Settings, LogOut, ChevronRight, Lock } from 'lucide-react';
 
 export default function Index() {
-  const { perfil, logout } = useAuth();
-  
-  const isStaff = perfil?.role === 'staff';
+  const { perfil, logout, isStaff } = useAuth();
 
   return (
     <div className="min-h-screen flex items-center justify-center relative overflow-hidden bg-[#0a0f1e]">

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type FormEvent } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
@@ -96,7 +96,7 @@ export default function GerenciarEquipe() {
     onError: (err: any) => toast.error(`Erro ao editar: ${err.message}`),
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
     if (!/^[A-Za-z]\d{5,8}$/.test(form.matricula)) {
       toast.error('A matrícula deve ter 1 letra e 5 a 8 números.');

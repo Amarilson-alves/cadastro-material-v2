@@ -20,35 +20,29 @@ export function useAuth() {
   useEffect(() => {
     let montado = true;
 
-    const buscarSessao = async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        const usuarioLogado = session?.user ?? null;
-        if (montado) setUser(usuarioLogado);
-        if (usuarioLogado) await carregarPerfil(usuarioLogado.id);
-      } catch (erro) {
-        console.error('Erro ao validar sessão:', erro);
-      } finally {
-        if (montado) setCarregando(false);
-      }
-    };
-
-    buscarSessao();
-
+    // Única fonte de verdade: onAuthStateChange dispara INITIAL_SESSION imediatamente
+    // com a sessão atual, eliminando a corrida entre buscarSessao e o listener.
     const { data: listener } = supabase.auth.onAuthStateChange(async (_evento, sessao) => {
       if (!montado) return;
       const u = sessao?.user ?? null;
       setUser(u);
       if (u) {
-        await carregarPerfil(u.id);
+        try {
+          await carregarPerfil(u.id);
+        } catch (err) {
+          console.error('Erro ao carregar perfil:', err);
+        }
       } else {
         setPerfil(null);
       }
+      // Só libera carregando depois que o perfil também estiver carregado
+      if (montado) setCarregando(false);
     });
 
+    // Fallback: evita loading infinito em caso de falha no evento
     const timer = setTimeout(() => {
       if (montado) setCarregando(false);
-    }, 2500);
+    }, 3000);
 
     return () => {
       montado = false;
@@ -61,14 +55,12 @@ export function useAuth() {
     const emailFake = `${matricula.toUpperCase()}@cadastro.fake`;
     const { error } = await supabase.auth.signInWithPassword({ email: emailFake, password: senha });
     if (error) throw new Error(error.message);
-    const { data: { session } } = await supabase.auth.getSession();
-    if (session?.user) await carregarPerfil(session.user.id);
+    // SIGNED_IN dispara onAuthStateChange que cuida de setUser + carregarPerfil
   };
 
   const logout = async () => {
     await supabase.auth.signOut();
-    setUser(null);
-    setPerfil(null);
+    // SIGNED_OUT dispara onAuthStateChange que cuida de limpar user e perfil
   };
 
   // Helpers de permissão — use esses booleans no código
