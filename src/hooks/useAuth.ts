@@ -1,27 +1,38 @@
-import { useState, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect, type ReactNode, createElement } from 'react';
 import type { User } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
 import type { Perfil } from '@/types';
 
-export function useAuth() {
-  const [user, setUser]       = useState<User | null>(null);
-  const [perfil, setPerfil]   = useState<Perfil | null>(null);
-  const [carregando, setCarregando] = useState(true);
+interface AuthContextType {
+  user: User | null;
+  perfil: Perfil | null;
+  carregando: boolean;
+  login: (matricula: string, senha: string) => Promise<void>;
+  logout: () => Promise<void>;
+  isMaster: boolean;
+  isStaff: boolean;
+  isTecnico: boolean;
+}
 
-  const carregarPerfil = async (userId: string) => {
-    const { data } = await supabase
-      .from('perfis')
-      .select('*')
-      .eq('id', userId)
-      .single();
-    if (data) setPerfil(data as Perfil);
-  };
+const AuthContext = createContext<AuthContextType | null>(null);
+
+export function AuthProvider({ children }: { children: ReactNode }) {
+  const [user, setUser]     = useState<User | null>(null);
+  const [perfil, setPerfil] = useState<Perfil | null>(null);
+  const [carregando, setCarregando] = useState(true);
 
   useEffect(() => {
     let montado = true;
 
-    // Única fonte de verdade: onAuthStateChange dispara INITIAL_SESSION imediatamente
-    // com a sessão atual, eliminando a corrida entre buscarSessao e o listener.
+    const carregarPerfil = async (userId: string) => {
+      const { data } = await supabase
+        .from('perfis')
+        .select('*')
+        .eq('id', userId)
+        .single();
+      if (montado) setPerfil(data ? (data as Perfil) : null);
+    };
+
     const { data: listener } = supabase.auth.onAuthStateChange(async (_evento, sessao) => {
       if (!montado) return;
       const u = sessao?.user ?? null;
@@ -31,11 +42,11 @@ export function useAuth() {
           await carregarPerfil(u.id);
         } catch (err) {
           console.error('Erro ao carregar perfil:', err);
+          if (montado) setPerfil(null);
         }
       } else {
         setPerfil(null);
       }
-      // Só libera carregando depois que o perfil também estiver carregado
       if (montado) setCarregando(false);
     });
 
@@ -55,23 +66,30 @@ export function useAuth() {
     const emailFake = `${matricula.toUpperCase()}@cadastro.fake`;
     const { error } = await supabase.auth.signInWithPassword({ email: emailFake, password: senha });
     if (error) throw new Error(error.message);
-    // SIGNED_IN dispara onAuthStateChange que cuida de setUser + carregarPerfil
   };
 
   const logout = async () => {
     try {
       await supabase.auth.signOut({ scope: 'local' });
     } catch {
-      // Falha de rede ou sessão já inválida — limpa estado local manualmente
       setUser(null);
       setPerfil(null);
     }
   };
 
-  // Helpers de permissão — use esses booleans no código
-  const isMaster = perfil?.role === 'master';
-  const isStaff  = perfil?.role === 'staff' || isMaster;
+  const isMaster  = perfil?.role === 'master';
+  const isStaff   = perfil?.role === 'staff' || isMaster;
   const isTecnico = perfil?.role === 'tecnico';
 
-  return { user, perfil, carregando, login, logout, isMaster, isStaff, isTecnico };
+  return createElement(
+    AuthContext.Provider,
+    { value: { user, perfil, carregando, login, logout, isMaster, isStaff, isTecnico } },
+    children,
+  );
+}
+
+export function useAuth() {
+  const ctx = useContext(AuthContext);
+  if (!ctx) throw new Error('useAuth deve ser usado dentro de AuthProvider');
+  return ctx;
 }

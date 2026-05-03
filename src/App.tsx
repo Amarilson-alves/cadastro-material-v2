@@ -1,7 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from 'sonner';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth, AuthProvider } from '@/hooks/useAuth';
 
 import Login from '@/pages/Login';
 import Index from '@/pages/Index';
@@ -15,9 +15,7 @@ const queryClient = new QueryClient({
   },
 });
 
-// AutoLogout montado apenas dentro de rotas protegidas — não roda na tela de Login
 function RotaProtegida({ children, requireStaff = false }: { children: React.ReactNode, requireStaff?: boolean }) {
-  // Usamos o isStaff aqui, que já verifica se é 'staff' ou 'master'
   const { user, isStaff, carregando } = useAuth();
 
   if (carregando) {
@@ -29,11 +27,7 @@ function RotaProtegida({ children, requireStaff = false }: { children: React.Rea
   }
 
   if (!user) return <Navigate to="/login" replace />;
-
-  // CORREÇÃO: Agora permitimos a entrada se for staff OU master
-  if (requireStaff && !isStaff) {
-    return <Navigate to="/" replace />;
-  }
+  if (requireStaff && !isStaff) return <Navigate to="/" replace />;
 
   return (
     <>
@@ -46,16 +40,18 @@ function RotaProtegida({ children, requireStaff = false }: { children: React.Rea
 export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
-        <Toaster position="top-right" richColors />
-        <Routes>
-          <Route path="/login" element={<Login />} />
-          <Route path="/" element={<RotaProtegida><Index /></RotaProtegida>} />
-          <Route path="/campo" element={<RotaProtegida><Campo /></RotaProtegida>} />
-          <Route path="/interno" element={<RotaProtegida requireStaff><Interno /></RotaProtegida>} />
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </BrowserRouter>
+      <AuthProvider>
+        <BrowserRouter>
+          <Toaster position="top-right" richColors />
+          <Routes>
+            <Route path="/login" element={<Login />} />
+            <Route path="/" element={<RotaProtegida><Index /></RotaProtegida>} />
+            <Route path="/campo" element={<RotaProtegida><Campo /></RotaProtegida>} />
+            <Route path="/interno" element={<RotaProtegida requireStaff><Interno /></RotaProtegida>} />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </BrowserRouter>
+      </AuthProvider>
     </QueryClientProvider>
   );
 }
