@@ -44,10 +44,24 @@ export default function AutoLogout() {
     const eventos = ['mousemove', 'keydown', 'wheel', 'touchstart', 'click'];
     eventos.forEach(e => window.addEventListener(e, resetarCronometro));
 
+    // Pausa o timer quando o usuário troca de aba e reinicia ao voltar.
+    // Sem isso, o browser throttle acumula o tempo em background e o
+    // logout dispara assim que a aba fica ativa novamente.
+    const handleVisibility = () => {
+      if (document.hidden) {
+        if (timeoutRef.current) clearTimeout(timeoutRef.current);
+        if (warningTimeoutRef.current) clearTimeout(warningTimeoutRef.current);
+      } else {
+        resetarCronometro();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+
     return () => {
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
       if (warningTimeoutRef.current) clearTimeout(warningTimeoutRef.current);
       eventos.forEach(e => window.removeEventListener(e, resetarCronometro));
+      document.removeEventListener('visibilitychange', handleVisibility);
     };
   }, []);
 
