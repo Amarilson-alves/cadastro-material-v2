@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { HardHat, Settings, LogOut, ChevronRight } from 'lucide-react';
 
@@ -24,6 +24,15 @@ function RoleBadge({ role }: { role: string }) {
 
 export default function Index() {
   const { perfil, logout, isStaff } = useAuth();
+  const navigate = useNavigate();
+
+  async function handleLogout() {
+    try {
+      await logout();
+    } finally {
+      navigate('/login', { replace: true });
+    }
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center relative overflow-hidden bg-[#0a0f1e]">
@@ -97,7 +106,7 @@ export default function Index() {
             </Link>
           )}
 
-          <button onClick={logout}
+          <button onClick={handleLogout}
             className="group flex items-center gap-4 p-4 w-full rounded-2xl border border-white/5 hover:bg-white/10 transition-smooth backdrop-blur-sm mt-8">
             <div className="flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center">
               <LogOut className="h-5 w-5 text-slate-500 group-hover:text-red-400 transition-smooth" />

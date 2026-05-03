@@ -13,9 +13,14 @@ export default function AutoLogout() {
 
   const fazerLogout = async () => {
     if (window.location.pathname === '/login') return;
-    await supabase.auth.signOut();
-    toast.error('Sessão expirada por inatividade.');
-    navigate('/login');
+    try {
+      await supabase.auth.signOut({ scope: 'local' });
+    } catch {
+      // Ignora erro de rede — o estado local já foi limpo por scope:'local'
+    } finally {
+      toast.error('Sessão expirada por inatividade.');
+      navigate('/login', { replace: true });
+    }
   };
 
   const resetarCronometro = () => {

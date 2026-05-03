@@ -59,8 +59,13 @@ export function useAuth() {
   };
 
   const logout = async () => {
-    await supabase.auth.signOut();
-    // SIGNED_OUT dispara onAuthStateChange que cuida de limpar user e perfil
+    try {
+      await supabase.auth.signOut({ scope: 'local' });
+    } catch {
+      // Falha de rede ou sessão já inválida — limpa estado local manualmente
+      setUser(null);
+      setPerfil(null);
+    }
   };
 
   // Helpers de permissão — use esses booleans no código
