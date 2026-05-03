@@ -146,10 +146,12 @@ export default function GerenciarEquipe() {
           </h2>
         </div>
 
-        <form onSubmit={handleSubmit} className="grid grid-cols-1 sm:grid-cols-5 gap-3">
+        <form onSubmit={handleSubmit} className="grid grid-cols-1 sm:grid-cols-5 gap-3" autoComplete="off">
           <input required type="text" placeholder="Nome completo"
+            autoComplete="off"
             value={form.nome} onChange={e => setForm({ ...form, nome: e.target.value })} className={ic} />
-          <input required type="text" placeholder="Matrícula (Ex: A012345)"
+          <input required type="text" placeholder="Matrícula (Ex: B987654)"
+            autoComplete="off"
             value={form.matricula} onChange={e => setForm({ ...form, matricula: e.target.value.toUpperCase() })}
             className={`${ic} uppercase`} />
           <select value={form.funcao} onChange={e => setForm({ ...form, funcao: e.target.value })} className={ic}>
@@ -157,7 +159,8 @@ export default function GerenciarEquipe() {
           </select>
           <div className="relative">
             <input required minLength={6} type={mostrarSenha ? 'text' : 'password'}
-              placeholder="Senha" value={form.senha}
+              placeholder="Senha do novo usuário" autoComplete="new-password"
+              value={form.senha}
               onChange={e => setForm({ ...form, senha: e.target.value })} className={ic} />
             <button type="button" onClick={() => setMostrarSenha(v => !v)}
               className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
@@ -280,6 +283,7 @@ function EditarUsuarioForm({ usuario, isMaster, onSalvar, onCancelar, salvando }
         <div className="relative">
           <input type={mostrarSenhaEdit ? 'text' : 'password'} value={dados.senha}
             onChange={e => setDados({ ...dados, senha: e.target.value })}
+            autoComplete="new-password"
             className={ic} placeholder="Nova senha (opcional)" />
           <button type="button" onClick={() => setMostrarSenhaEdit(v => !v)}
             className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">

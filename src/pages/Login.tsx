@@ -135,7 +135,7 @@ export default function Login() {
                 required
                 value={matricula}
                 onChange={(e) => setMatricula(e.target.value.toUpperCase())}
-                placeholder="Ex: A0123456"
+                placeholder="Ex: Z9999999"
                 className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-slate-600 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/50 transition-all text-sm uppercase tracking-wider"
               />
             </div>
