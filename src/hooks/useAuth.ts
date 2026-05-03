@@ -25,12 +25,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     let montado = true;
 
     const carregarPerfil = async (userId: string) => {
-      const { data } = await supabase
-        .from('perfis')
-        .select('*')
-        .eq('id', userId)
-        .single();
-      if (montado) setPerfil(data ? (data as Perfil) : null);
+      // Tenta 2x: a 1ª pode falhar durante a janela de propagação do token renovado
+      for (let i = 0; i < 2; i++) {
+        const { data } = await supabase
+          .from('perfis')
+          .select('*')
+          .eq('id', userId)
+          .single();
+        if (data) { if (montado) setPerfil(data as Perfil); return; }
+        if (i === 0) await new Promise(r => setTimeout(r, 800));
+      }
+      if (montado) setPerfil(null);
     };
 
     const { data: listener } = supabase.auth.onAuthStateChange(async (_evento, sessao) => {
@@ -70,8 +75,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = async () => {
     try {
-      await supabase.auth.signOut({ scope: 'local' });
+      await supabase.auth.signOut();
     } catch {
+      // Se falhar na rede, limpa estado local diretamente
       setUser(null);
       setPerfil(null);
     }

@@ -14,9 +14,9 @@ export default function AutoLogout() {
   const fazerLogout = async () => {
     if (window.location.pathname === '/login') return;
     try {
-      await supabase.auth.signOut({ scope: 'local' });
+      await supabase.auth.signOut();
     } catch {
-      // Ignora erro de rede — o estado local já foi limpo por scope:'local'
+      // Ignora erro de rede — o navigate abaixo garante o redirecionamento
     } finally {
       toast.error('Sessão expirada por inatividade.');
       navigate('/login', { replace: true });
