@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect, type ReactNode, createElement } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import type { User } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
 import type { Perfil } from '@/types';
@@ -20,29 +21,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser]     = useState<User | null>(null);
   const [perfil, setPerfil] = useState<Perfil | null>(null);
   const [carregando, setCarregando] = useState(true);
+  const queryClient = useQueryClient();
 
   useEffect(() => {
     let montado = true;
 
     const carregarPerfil = async (userId: string) => {
-      // Tenta 2x: a 1ª pode falhar durante a janela de propagação do token renovado
-      for (let i = 0; i < 2; i++) {
-        const { data } = await supabase
-          .from('perfis')
-          .select('*')
-          .eq('id', userId)
-          .single();
-        if (data) { if (montado) setPerfil(data as Perfil); return; }
-        if (i === 0) await new Promise(r => setTimeout(r, 800));
-      }
-      if (montado) setPerfil(null);
+      const { data } = await supabase
+        .from('perfis')
+        .select('*')
+        .eq('id', userId)
+        .single();
+      if (montado) setPerfil(data ? (data as Perfil) : null);
     };
 
-    const { data: listener } = supabase.auth.onAuthStateChange(async (_evento, sessao) => {
+    const { data: listener } = supabase.auth.onAuthStateChange(async (evento, sessao) => {
       if (!montado) return;
       const u = sessao?.user ?? null;
       setUser(u);
+
       if (u) {
+        // TOKEN_REFRESHED: JWT renovado enquanto o usuário estava em outra aba.
+        // As queries do React Query podem ter falhado com 401 durante o refresh,
+        // então forçamos um refetch de tudo com o novo token.
+        if (evento === 'TOKEN_REFRESHED') {
+          queryClient.invalidateQueries();
+        }
         try {
           await carregarPerfil(u.id);
         } catch (err) {
