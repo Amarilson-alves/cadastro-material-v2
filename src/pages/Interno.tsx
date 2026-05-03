@@ -12,7 +12,7 @@ import { formatarData, formatSKU } from '@/lib/utils';
 import {
   ArrowLeft, Search, Download, Plus, Trash2, Edit2, Settings,
   Package, FileSpreadsheet, Loader2, X, Users, ChevronDown, ChevronRight,
-  CheckCircle, Clock, AlertCircle,
+  CheckCircle, Clock, AlertCircle, Eye,
 } from 'lucide-react';
 import GerenciarEquipe from '@/components/GerenciarEquipe';
 
@@ -30,7 +30,7 @@ function StatusBadge({ status }: { status: string }) {
   if (status === 'aguardando' || status === 'Nova')
     return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-amber-100 text-amber-800 text-xs font-medium"><Clock className="h-3 w-3" />Aguardando</span>;
   if (status === 'em_analise')
-    return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-blue-100 text-blue-800 text-xs font-medium"><Search className="h-3 w-3" />Em análise</span>;
+    return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-blue-100 text-blue-800 text-xs font-medium"><Eye className="h-3 w-3" />Em análise</span>;
   if (status === 'validada')
     return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-green-100 text-green-800 text-xs font-medium"><CheckCircle className="h-3 w-3" />Validada</span>;
   if (status === 'concluida')
@@ -473,7 +473,7 @@ function DrawerObra({ obra, onClose, onSalvar, onValidar, salvando, validando, c
   };
 
   return (
-    <div className="w-80 flex-shrink-0 card flex flex-col animate-fade-in">
+    <div className="w-80 flex-shrink-0 card flex flex-col animate-slide-from-right">
       {/* Header */}
       <div className="px-4 py-3 border-b border-gray-100 flex items-start gap-2">
         <div className="flex-1 min-w-0">

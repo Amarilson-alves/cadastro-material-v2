@@ -1,6 +1,26 @@
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
-import { HardHat, Settings, LogOut, ChevronRight, Lock } from 'lucide-react';
+import { HardHat, Settings, LogOut, ChevronRight } from 'lucide-react';
+
+function RoleBadge({ role }: { role: string }) {
+  if (role === 'master')
+    return (
+      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold tracking-wide uppercase bg-amber-500/15 text-amber-400 border border-amber-500/20">
+        ★ Master
+      </span>
+    );
+  if (role === 'staff')
+    return (
+      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold tracking-wide uppercase bg-green-500/15 text-green-400 border border-green-500/20">
+        ⚙ Staff · Administração
+      </span>
+    );
+  return (
+    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold tracking-wide uppercase bg-orange-500/15 text-orange-400 border border-orange-500/20">
+      ⚙ Técnico de Campo
+    </span>
+  );
+}
 
 export default function Index() {
   const { perfil, logout, isStaff } = useAuth();
@@ -33,11 +53,16 @@ export default function Index() {
             </svg>
           </div>
           <h1 className="text-3xl font-bold text-white mb-1.5 tracking-tight">Gestão de Materiais</h1>
-          <div className="flex items-center justify-center gap-2 mb-3">
+          <div className="flex items-center justify-center gap-2 mb-4">
             <span className="h-px w-6 bg-orange-500/40" />
             <span className="text-orange-400 text-xs font-semibold tracking-widest uppercase">Telecomunicações</span>
             <span className="h-px w-6 bg-orange-500/40" />
           </div>
+          {perfil?.role && (
+            <div className="flex justify-center mb-3">
+              <RoleBadge role={perfil.role} />
+            </div>
+          )}
           <p className="text-slate-400 text-sm">
             Bem-vindo, <strong className="text-white">{perfil?.nome || 'Usuário'}</strong>. Selecione o módulo:
           </p>
@@ -45,7 +70,7 @@ export default function Index() {
 
         {/* Menu de Acessos */}
         <div className="space-y-4">
-          
+
           <Link to="/campo"
             className="group flex items-center gap-4 p-5 rounded-2xl border border-orange-500/20 bg-orange-500/5 hover:bg-orange-500/10 hover:border-orange-500/40 transition-smooth backdrop-blur-sm">
             <div className="flex-shrink-0 w-12 h-12 rounded-xl bg-orange-500/15 flex items-center justify-center group-hover:bg-orange-500/25 transition-smooth">
@@ -58,7 +83,7 @@ export default function Index() {
             <ChevronRight className="h-5 w-5 text-slate-500 group-hover:text-orange-400 group-hover:translate-x-1 transition-smooth" />
           </Link>
 
-          {isStaff ? (
+          {isStaff && (
             <Link to="/interno"
               className="group flex items-center gap-4 p-5 rounded-2xl border border-green-500/20 bg-green-500/5 hover:bg-green-500/10 hover:border-green-500/40 transition-smooth backdrop-blur-sm">
               <div className="flex-shrink-0 w-12 h-12 rounded-xl bg-green-500/15 flex items-center justify-center group-hover:bg-green-500/25 transition-smooth">
@@ -70,16 +95,6 @@ export default function Index() {
               </div>
               <ChevronRight className="h-5 w-5 text-slate-500 group-hover:text-green-400 group-hover:translate-x-1 transition-smooth" />
             </Link>
-          ) : (
-            <div className="flex items-center gap-4 p-5 rounded-2xl border border-white/5 bg-black/20 opacity-60 cursor-not-allowed backdrop-blur-sm">
-              <div className="flex-shrink-0 w-12 h-12 rounded-xl bg-white/5 flex items-center justify-center">
-                <Lock className="h-5 w-5 text-slate-500" />
-              </div>
-              <div className="flex-1 text-left">
-                <div className="font-bold text-slate-500 text-base">Acesso Interno</div>
-                <div className="text-slate-600 text-sm">Área restrita à administração</div>
-              </div>
-            </div>
           )}
 
           <button onClick={logout}

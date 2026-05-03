@@ -44,6 +44,9 @@
   .animate-slide-up {
     animation: slideUp 0.35s ease-out forwards;
   }
+  .animate-slide-from-right {
+    animation: slideFromRight 0.28s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  }
 }
 
 @keyframes fadeIn {
@@ -53,6 +56,10 @@
 @keyframes slideUp {
   from { opacity: 0; transform: translateY(16px); }
   to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes slideFromRight {
+  from { opacity: 0; transform: translateX(100%); }
+  to   { opacity: 1; transform: translateX(0); }
 }
 
 /* Scrollbar elegante */

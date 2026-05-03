@@ -1,34 +1,34 @@
 import { useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
 
+const TEMPO_INATIVIDADE = 30 * 60 * 1000; // 30 minutos
+const AVISO_ANTECIPADO  = TEMPO_INATIVIDADE - 5 * 60 * 1000; // avisa 5 min antes
+
 export default function AutoLogout() {
-  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const navigate = useNavigate();
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const warningTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const fazerLogout = async () => {
-    // 1. Evita que o cronômetro tente deslogar quem já está na tela de login
     if (window.location.pathname === '/login') return;
-
-    // 2. Apaga a sessão do usuário no banco
     await supabase.auth.signOut();
-    
-    // 3. Mostra a notificação vermelha
     toast.error('Sessão expirada por inatividade.');
-
-    // 4. FORÇA o navegador a jogar o usuário para a tela de login na mesma hora
-    window.location.href = '/login';
+    navigate('/login');
   };
 
   const resetarCronometro = () => {
-    if (timeoutRef.current) {
-      clearTimeout(timeoutRef.current);
-    }
-    
-    // ==========================================
-    // ⚙️ CONFIGURAÇÃO DO TEMPO AQUI
-    // ==========================================
-    // 1 minuto = 1 * 60 * 1000 milissegundos (Para teste)
-    const TEMPO_INATIVIDADE = 30 * 60 * 1000; 
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    if (warningTimeoutRef.current) clearTimeout(warningTimeoutRef.current);
+
+    warningTimeoutRef.current = setTimeout(() => {
+      toast.warning('Sessão expirando em 5 minutos', {
+        description: 'Clique em "Renovar" para permanecer conectado.',
+        action: { label: 'Renovar sessão', onClick: resetarCronometro },
+        duration: 5 * 60 * 1000,
+      });
+    }, AVISO_ANTECIPADO);
 
     timeoutRef.current = setTimeout(fazerLogout, TEMPO_INATIVIDADE);
   };
@@ -36,21 +36,15 @@ export default function AutoLogout() {
   useEffect(() => {
     resetarCronometro();
 
-    const eventos = [
-      'mousemove',  // Mexer o mouse
-      'keydown',    // Digitar no teclado
-      'wheel',      // Rolar a página
-      'touchstart', // Tocar na tela do celular
-      'click'       // Clicar em algo
-    ];
-
-    eventos.forEach(evento => window.addEventListener(evento, resetarCronometro));
+    const eventos = ['mousemove', 'keydown', 'wheel', 'touchstart', 'click'];
+    eventos.forEach(e => window.addEventListener(e, resetarCronometro));
 
     return () => {
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
-      eventos.forEach(evento => window.removeEventListener(evento, resetarCronometro));
+      if (warningTimeoutRef.current) clearTimeout(warningTimeoutRef.current);
+      eventos.forEach(e => window.removeEventListener(e, resetarCronometro));
     };
   }, []);
 
-  return null; 
+  return null;
 }
