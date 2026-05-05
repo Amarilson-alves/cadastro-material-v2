@@ -18,73 +18,105 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser]     = useState<User | null>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [perfil, setPerfil] = useState<Perfil | null>(null);
+  // O carregando DEVE começar como true para a RotaProtegida esperar
   const [carregando, setCarregando] = useState(true);
   const queryClient = useQueryClient();
-  const carregandoPerfilRef = useRef(false);
+  const perfilIdAtual = useRef<string | null>(null);
 
   useEffect(() => {
     let montado = true;
 
     const carregarPerfil = async (userId: string) => {
-      if (carregandoPerfilRef.current) return;
-      carregandoPerfilRef.current = true;
+      // Evita loops infinitos de busca se o ID for o mesmo
+      if (perfilIdAtual.current === userId) return;
+      
       try {
-        const { data } = await supabase
+        const { data, error } = await supabase
           .from('perfis')
           .select('*')
           .eq('id', userId)
           .single();
-        if (montado) setPerfil(data ? (data as Perfil) : null);
+          
+        if (error) throw error;
+        
+        if (montado) {
+          setPerfil(data as Perfil);
+          perfilIdAtual.current = userId;
+        }
       } catch (err) {
         console.error('Erro ao carregar perfil:', err);
         if (montado) setPerfil(null);
       } finally {
-        carregandoPerfilRef.current = false;
+        if (montado) setCarregando(false);
       }
     };
 
+    // 1. FORÇA A LEITURA DO CACHE AO ABRIR A TELA (Ignora o evento fantasma)
+    const inicializarSessao = async () => {
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession();
+        if (error) throw error;
+
+        if (session?.user) {
+          if (montado) setUser(session.user);
+          await carregarPerfil(session.user.id);
+        } else {
+          if (montado) {
+            setUser(null);
+            setPerfil(null);
+            setCarregando(false);
+          }
+        }
+      } catch (err) {
+        console.error('Sessão fantasma derrubada:', err);
+        if (montado) {
+          setUser(null);
+          setPerfil(null);
+          setCarregando(false);
+        }
+      }
+    };
+
+    inicializarSessao();
+
+    // 2. ESCUTA EVENTOS EM TEMPO REAL (E DE OUTRAS ABAS)
     const { data: listener } = supabase.auth.onAuthStateChange(async (evento, sessao) => {
       if (!montado) return;
-      const u = sessao?.user ?? null;
-      setUser(u);
 
-      if (u) {
-        if (evento === 'TOKEN_REFRESHED') {
-          // JWT renovado — invalida queries que falharam com 401 durante o refresh.
-          // O perfil não muda, então não recarregamos.
-          queryClient.invalidateQueries({
-            predicate: q => q.queryKey[0] !== 'perfil',
-          });
-          if (montado) setCarregando(false);
-          return;
-        }
-        // Mantém carregando=true até o perfil estar pronto para evitar redirect
-        // prematuro no Login.tsx antes de perfil ser populado.
-        if (montado) setCarregando(true);
-        await carregarPerfil(u.id);
-      } else {
+      if (evento === 'SIGNED_OUT') {
+        setUser(null);
         setPerfil(null);
+        perfilIdAtual.current = null;
+        setCarregando(false);
+        queryClient.clear(); // Limpa a memória para não vazar dados para o próximo usuário
+        return;
       }
-      if (montado) setCarregando(false);
-    });
 
-    const timer = setTimeout(() => {
-      if (montado) setCarregando(false);
-    }, 3000);
+      if (sessao?.user) {
+        setUser(sessao.user);
+        
+        if (evento === 'TOKEN_REFRESHED') {
+          queryClient.invalidateQueries({ predicate: q => q.queryKey[0] !== 'perfil' });
+        }
+        
+        // Só busca o perfil de novo se a aba identificou um usuário diferente
+        if (perfilIdAtual.current !== sessao.user.id) {
+          setCarregando(true);
+          await carregarPerfil(sessao.user.id);
+        }
+      }
+    });
 
     return () => {
       montado = false;
       listener.subscription.unsubscribe();
-      clearTimeout(timer);
     };
-  }, []);
+  }, [queryClient]);
 
   const login = async (matricula: string, senha: string) => {
-    // Limpa tokens residuais do localStorage antes de iniciar nova sessão.
-    // Evita que um refresh token expirado/inválido bloqueie o novo login.
-    try { await supabase.auth.signOut({ scope: 'local' }); } catch { /* ignora */ }
+    try { await supabase.auth.signOut(); } catch { /* ignora erro do fantasma */ }
     const emailFake = `${matricula.toUpperCase()}@cadastro.fake`;
     const { error } = await supabase.auth.signInWithPassword({ email: emailFake, password: senha });
     if (error) throw new Error(error.message);
@@ -93,14 +125,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = async () => {
     try {
       await supabase.auth.signOut();
-    } catch {
+    } finally {
       setUser(null);
       setPerfil(null);
+      perfilIdAtual.current = null;
     }
   };
 
-  const isMaster  = perfil?.role === 'master';
-  const isStaff   = perfil?.role === 'staff' || isMaster;
+  const isMaster  = perfil?.role === 'master' || user?.user_metadata?.role === 'master';
+  const isStaff   = perfil?.role === 'staff' || perfil?.role === 'master' || isMaster;
   const isTecnico = perfil?.role === 'tecnico';
 
   return (

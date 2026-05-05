@@ -3,7 +3,6 @@
 // =============================================
 import { createClient } from '@supabase/supabase-js';
 
-// Lê as variáveis do arquivo .env (NUNCA coloque os valores aqui diretamente!)
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
@@ -13,4 +12,13 @@ if (!supabaseUrl || !supabaseAnonKey) {
   );
 }
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    persistSession: true,
+    autoRefreshToken: true,
+    detectSessionInUrl: true,
+    // A MÁGICA ESTÁ AQUI: Muda o nome do cofre. Se houver uma sessão 
+    // fantasma corrompida no navegador, ela será completamente ignorada.
+    storageKey: 'app-obras-v3-auth-token',
+  }
+});
