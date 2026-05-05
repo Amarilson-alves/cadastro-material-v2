@@ -60,6 +60,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           if (montado) setCarregando(false);
           return;
         }
+        // Mantém carregando=true até o perfil estar pronto para evitar redirect
+        // prematuro no Login.tsx antes de perfil ser populado.
+        if (montado) setCarregando(true);
         await carregarPerfil(u.id);
       } else {
         setPerfil(null);

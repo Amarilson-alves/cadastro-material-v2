@@ -11,7 +11,14 @@ import AutoLogout from '@/components/AutoLogout';
 
 const queryClient = new QueryClient({
   defaultOptions: {
-    queries: { retry: 2, staleTime: 5 * 60 * 1000 },
+    queries: {
+      retry: 2,
+      staleTime: 5 * 60 * 1000,
+      // Desativado globalmente: o TOKEN_REFRESHED handler em useAuth dispara
+      // invalidateQueries ao voltar de outra aba, evitando a race condition
+      // onde o refetch usa o JWT expirado antes do Supabase terminar o refresh.
+      refetchOnWindowFocus: false,
+    },
   },
 });
 
