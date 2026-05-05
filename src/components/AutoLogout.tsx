@@ -1,26 +1,23 @@
 import { useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
 
-const TEMPO_INATIVIDADE = 30 * 60 * 1000; // 30 minutos
-const AVISO_ANTECIPADO  = TEMPO_INATIVIDADE - 5 * 60 * 1000; // avisa 5 min antes
+const TEMPO_INATIVIDADE = 30 * 60 * 1000;
+const AVISO_ANTECIPADO  = TEMPO_INATIVIDADE - 5 * 60 * 1000;
 
 export default function AutoLogout() {
-  const navigate = useNavigate();
-  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const navigate  = useNavigate();
+  const { logout } = useAuth();
+  const timeoutRef        = useRef<ReturnType<typeof setTimeout> | null>(null);
   const warningTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastActivityRef   = useRef<number>(Date.now());
 
   const fazerLogout = async () => {
     if (window.location.pathname === '/login') return;
-    try {
-      await supabase.auth.signOut();
-    } catch {
-      // Ignora erro de rede — o navigate abaixo garante o redirecionamento
-    } finally {
-      toast.error('Sessão expirada por inatividade.');
-      navigate('/login', { replace: true });
-    }
+    try { await logout(); } catch { /* logout já trata falha de rede internamente */ }
+    toast.error('Sessão expirada por inatividade.');
+    navigate('/login', { replace: true });
   };
 
   const resetarCronometro = () => {
@@ -41,8 +38,16 @@ export default function AutoLogout() {
   useEffect(() => {
     resetarCronometro();
 
+    const handleActivity = () => {
+      const agora = Date.now();
+      // Throttle: ignora eventos mais frequentes que 1 segundo (ex: mousemove contínuo)
+      if (agora - lastActivityRef.current < 1000) return;
+      lastActivityRef.current = agora;
+      resetarCronometro();
+    };
+
     const eventos = ['mousemove', 'keydown', 'wheel', 'touchstart', 'click'];
-    eventos.forEach(e => window.addEventListener(e, resetarCronometro));
+    eventos.forEach(e => window.addEventListener(e, handleActivity));
 
     // Pausa o timer quando o usuário troca de aba e reinicia ao voltar.
     // Sem isso, o browser throttle acumula o tempo em background e o
@@ -52,6 +57,7 @@ export default function AutoLogout() {
         if (timeoutRef.current) clearTimeout(timeoutRef.current);
         if (warningTimeoutRef.current) clearTimeout(warningTimeoutRef.current);
       } else {
+        lastActivityRef.current = Date.now();
         resetarCronometro();
       }
     };
@@ -60,7 +66,7 @@ export default function AutoLogout() {
     return () => {
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
       if (warningTimeoutRef.current) clearTimeout(warningTimeoutRef.current);
-      eventos.forEach(e => window.removeEventListener(e, resetarCronometro));
+      eventos.forEach(e => window.removeEventListener(e, handleActivity));
       document.removeEventListener('visibilitychange', handleVisibility);
     };
   }, []);

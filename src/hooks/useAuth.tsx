@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, type ReactNode, createElement } from 'react';
+import { createContext, useContext, useState, useEffect, useRef, type ReactNode } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import type { User } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
@@ -22,17 +22,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [perfil, setPerfil] = useState<Perfil | null>(null);
   const [carregando, setCarregando] = useState(true);
   const queryClient = useQueryClient();
+  const carregandoPerfilRef = useRef(false);
 
   useEffect(() => {
     let montado = true;
 
     const carregarPerfil = async (userId: string) => {
-      const { data } = await supabase
-        .from('perfis')
-        .select('*')
-        .eq('id', userId)
-        .single();
-      if (montado) setPerfil(data ? (data as Perfil) : null);
+      if (carregandoPerfilRef.current) return;
+      carregandoPerfilRef.current = true;
+      try {
+        const { data } = await supabase
+          .from('perfis')
+          .select('*')
+          .eq('id', userId)
+          .single();
+        if (montado) setPerfil(data ? (data as Perfil) : null);
+      } catch (err) {
+        console.error('Erro ao carregar perfil:', err);
+        if (montado) setPerfil(null);
+      } finally {
+        carregandoPerfilRef.current = false;
+      }
     };
 
     const { data: listener } = supabase.auth.onAuthStateChange(async (evento, sessao) => {
@@ -41,25 +51,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(u);
 
       if (u) {
-        // TOKEN_REFRESHED: JWT renovado enquanto o usuário estava em outra aba.
-        // As queries do React Query podem ter falhado com 401 durante o refresh,
-        // então forçamos um refetch de tudo com o novo token.
         if (evento === 'TOKEN_REFRESHED') {
-          queryClient.invalidateQueries();
+          // JWT renovado — invalida queries que falharam com 401 durante o refresh.
+          // O perfil não muda, então não recarregamos.
+          queryClient.invalidateQueries({
+            predicate: q => q.queryKey[0] !== 'perfil',
+          });
+          if (montado) setCarregando(false);
+          return;
         }
-        try {
-          await carregarPerfil(u.id);
-        } catch (err) {
-          console.error('Erro ao carregar perfil:', err);
-          if (montado) setPerfil(null);
-        }
+        await carregarPerfil(u.id);
       } else {
         setPerfil(null);
       }
       if (montado) setCarregando(false);
     });
 
-    // Fallback: evita loading infinito em caso de falha no evento
     const timer = setTimeout(() => {
       if (montado) setCarregando(false);
     }, 3000);
@@ -72,6 +79,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const login = async (matricula: string, senha: string) => {
+    // Limpa tokens residuais do localStorage antes de iniciar nova sessão.
+    // Evita que um refresh token expirado/inválido bloqueie o novo login.
+    try { await supabase.auth.signOut({ scope: 'local' }); } catch { /* ignora */ }
     const emailFake = `${matricula.toUpperCase()}@cadastro.fake`;
     const { error } = await supabase.auth.signInWithPassword({ email: emailFake, password: senha });
     if (error) throw new Error(error.message);
@@ -81,7 +91,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       await supabase.auth.signOut();
     } catch {
-      // Se falhar na rede, limpa estado local diretamente
       setUser(null);
       setPerfil(null);
     }
@@ -91,10 +100,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const isStaff   = perfil?.role === 'staff' || isMaster;
   const isTecnico = perfil?.role === 'tecnico';
 
-  return createElement(
-    AuthContext.Provider,
-    { value: { user, perfil, carregando, login, logout, isMaster, isStaff, isTecnico } },
-    children,
+  return (
+    <AuthContext.Provider value={{ user, perfil, carregando, login, logout, isMaster, isStaff, isTecnico }}>
+      {children}
+    </AuthContext.Provider>
   );
 }
 
