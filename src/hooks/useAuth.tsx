@@ -18,11 +18,10 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser]     = useState<User | null>(null);
   const [perfil, setPerfil] = useState<Perfil | null>(null);
-  // O carregando DEVE começar como true para a RotaProtegida esperar
   const [carregando, setCarregando] = useState(true);
-  const queryClient = useQueryClient();
+  const queryClient   = useQueryClient();
   const perfilIdAtual = useRef<string | null>(null);
 
   useEffect(() => {
@@ -31,64 +30,64 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const carregarPerfil = async (userId: string) => {
       if (perfilIdAtual.current === userId) {
         console.log(`[PERFIL] skip — já carregado para ${userId.slice(0, 8)}`);
+        if (montado) setCarregando(false);
         return;
       }
 
       console.log(`[PERFIL] buscando para ${userId.slice(0, 8)}...`);
-      try {
-        const { data, error } = await supabase
-          .from('perfis')
-          .select('*')
-          .eq('id', userId)
-          .single();
 
-        if (error) { console.error('[PERFIL] erro Supabase:', error.code, error.message); throw error; }
+      let timeoutId: ReturnType<typeof setTimeout> | undefined;
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        timeoutId = setTimeout(() => {
+          console.warn('[PERFIL] timeout 6s');
+          reject(new Error('PERFIL_TIMEOUT'));
+        }, 6000);
+      });
+
+      try {
+        const { data, error } = await Promise.race([
+          supabase.from('perfis').select('*').eq('id', userId).single(),
+          timeoutPromise,
+        ]);
+
+        if (error) { console.error('[PERFIL] erro:', error.code, error.message); throw error; }
 
         if (montado) {
           setPerfil(data as Perfil);
           perfilIdAtual.current = userId;
           console.log(`[PERFIL] OK — role=${(data as Perfil).role}`);
         }
-      } catch (err) {
+      } catch (err: unknown) {
         console.error('[PERFIL] falhou:', err);
         if (montado) setPerfil(null);
+
+        // Timeout ou erro de auth — limpa localStorage para liberar novo login sem F12
+        const isAbort = err instanceof Error && err.name === 'AbortError';
+        const isAuth  = err instanceof Object && 'code' in err &&
+          ['PGRST301', '401', 'invalid_jwt'].includes(String((err as { code: unknown }).code));
+
+        const isTimeout = err instanceof Error && err.message === 'PERFIL_TIMEOUT';
+        if (isAbort || isAuth || isTimeout) {
+          console.warn('[PERFIL] sessão zumbi detectada — limpando token local');
+          try { await supabase.auth.signOut({ scope: 'local' }); } catch { /* ignora */ }
+          if (montado) { setUser(null); perfilIdAtual.current = null; }
+        }
       } finally {
+        if (timeoutId) clearTimeout(timeoutId);
         if (montado) setCarregando(false);
       }
     };
 
-    // 1. FORÇA A LEITURA DO CACHE AO ABRIR A TELA
-    const inicializarSessao = async () => {
-      console.log('[INIT] lendo sessão do localStorage...');
-      try {
-        const { data: { session }, error } = await supabase.auth.getSession();
-        if (error) throw error;
-
-        if (session?.user) {
-          console.log('[INIT] sessão encontrada:', session.user.id.slice(0, 8));
-          if (montado) setUser(session.user);
-          await carregarPerfil(session.user.id);
-        } else {
-          console.log('[INIT] nenhuma sessão no cache');
-          if (montado) { setUser(null); setPerfil(null); setCarregando(false); }
-        }
-      } catch (err) {
-        console.error('[INIT] erro:', err);
-        if (montado) { setUser(null); setPerfil(null); setCarregando(false); }
-      }
-    };
-
-    inicializarSessao();
-
-    // 2. ESCUTA EVENTOS EM TEMPO REAL (E DE OUTRAS ABAS)
+    // onAuthStateChange é a única fonte de verdade para o estado de auth.
+    // Não usar getSession() aqui — ele compete pelo lock interno do Supabase
+    // durante o refresh de token e trava a consulta ao banco indefinidamente.
     const { data: listener } = supabase.auth.onAuthStateChange(async (evento, sessao) => {
       const ts = new Date().toISOString().slice(11, 23);
       console.log(`[AUTH ${ts}] "${evento}" user=${sessao?.user?.id?.slice(0, 8) ?? 'null'} perfilRef=${perfilIdAtual.current?.slice(0, 8) ?? 'null'}`);
 
-      if (!montado) { console.log(`[AUTH ${ts}] ignorado — desmontado`); return; }
+      if (!montado) return;
 
       if (evento === 'SIGNED_OUT') {
-        console.log(`[AUTH ${ts}] SIGNED_OUT → limpando tudo`);
         setUser(null);
         setPerfil(null);
         perfilIdAtual.current = null;
@@ -97,21 +96,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return;
       }
 
+      if (evento === 'TOKEN_REFRESHED') {
+        if (sessao?.user) setUser(sessao.user);
+        queryClient.invalidateQueries({ predicate: q => q.queryKey[0] !== 'perfil' });
+        return;
+      }
+
       if (sessao?.user) {
         setUser(sessao.user);
-
-        if (evento === 'TOKEN_REFRESHED') {
-          console.log(`[AUTH ${ts}] TOKEN_REFRESHED → invalidateQueries`);
-          queryClient.invalidateQueries({ predicate: q => q.queryKey[0] !== 'perfil' });
-        }
-
         if (perfilIdAtual.current !== sessao.user.id) {
-          console.log(`[AUTH ${ts}] perfil diferente → buscando...`);
           setCarregando(true);
           await carregarPerfil(sessao.user.id);
         } else {
           console.log(`[AUTH ${ts}] perfil já carregado — skip`);
+          setCarregando(false);
         }
+      } else {
+        // INITIAL_SESSION sem sessão — usuário não está logado
+        setCarregando(false);
       }
     });
 
@@ -122,21 +124,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [queryClient]);
 
   const login = async (matricula: string, senha: string) => {
-    console.log('[LOGIN] iniciando — limpando token local...');
-    // scope:'local' limpa o localStorage sem chamar o servidor.
-    // Necessário porque signOut() completo falha com JWT expirado e não limpa o cache.
+    console.log('[LOGIN] limpando token local...');
     try { await supabase.auth.signOut({ scope: 'local' }); } catch { /* ignora */ }
     const emailFake = `${matricula.toUpperCase()}@cadastro.fake`;
     console.log('[LOGIN] chamando signInWithPassword...');
     const { error } = await supabase.auth.signInWithPassword({ email: emailFake, password: senha });
     if (error) { console.error('[LOGIN] erro:', error.message); throw new Error(error.message); }
-    console.log('[LOGIN] API retornou OK — aguardando onAuthStateChange...');
+    console.log('[LOGIN] OK — aguardando onAuthStateChange...');
   };
 
   const logout = async () => {
-    try {
-      await supabase.auth.signOut();
-    } finally {
+    try { await supabase.auth.signOut(); } finally {
       setUser(null);
       setPerfil(null);
       perfilIdAtual.current = null;
