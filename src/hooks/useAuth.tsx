@@ -29,17 +29,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const carregarPerfil = async (userId: string) => {
       if (perfilIdAtual.current === userId) {
-        console.log(`[PERFIL] skip — já carregado para ${userId.slice(0, 8)}`);
+        console.log(`[PERFIL] skip — já carregado ${userId.slice(0, 8)}`);
         if (montado) setCarregando(false);
         return;
       }
 
-      console.log(`[PERFIL] buscando para ${userId.slice(0, 8)}...`);
+      console.log(`[PERFIL] buscando ${userId.slice(0, 8)}...`);
 
       let timeoutId: ReturnType<typeof setTimeout> | undefined;
       const timeoutPromise = new Promise<never>((_, reject) => {
         timeoutId = setTimeout(() => {
-          console.warn('[PERFIL] timeout 6s');
+          console.warn('[PERFIL] timeout 6s — sessão zumbi');
           reject(new Error('PERFIL_TIMEOUT'));
         }, 6000);
       });
@@ -59,18 +59,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       } catch (err: unknown) {
         console.error('[PERFIL] falhou:', err);
-        if (montado) setPerfil(null);
-
-        // Timeout ou erro de auth — limpa localStorage para liberar novo login sem F12
-        const isAbort = err instanceof Error && err.name === 'AbortError';
-        const isAuth  = err instanceof Object && 'code' in err &&
-          ['PGRST301', '401', 'invalid_jwt'].includes(String((err as { code: unknown }).code));
-
-        const isTimeout = err instanceof Error && err.message === 'PERFIL_TIMEOUT';
-        if (isAbort || isAuth || isTimeout) {
-          console.warn('[PERFIL] sessão zumbi detectada — limpando token local');
-          try { await supabase.auth.signOut({ scope: 'local' }); } catch { /* ignora */ }
-          if (montado) { setUser(null); perfilIdAtual.current = null; }
+        // Limpa estado local — NÃO chama supabase.auth.* aqui.
+        // Chamar signOut dentro do catch causa deadlock secundário (lock do Supabase).
+        // O login() seguinte fará signOut({ scope:'local' }) fora do contexto do lock.
+        if (montado) {
+          setPerfil(null);
+          setUser(null);
+          perfilIdAtual.current = null;
         }
       } finally {
         if (timeoutId) clearTimeout(timeoutId);
@@ -78,10 +73,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     };
 
-    // onAuthStateChange é a única fonte de verdade para o estado de auth.
-    // Não usar getSession() aqui — ele compete pelo lock interno do Supabase
-    // durante o refresh de token e trava a consulta ao banco indefinidamente.
-    const { data: listener } = supabase.auth.onAuthStateChange(async (evento, sessao) => {
+    // IMPORTANTE: callback é SÍNCRONO.
+    // O Supabase mantém o lock de auth ativo enquanto executa este callback.
+    // Qualquer chamada async ao Supabase aqui (incluindo supabase.from() que internamente
+    // chama getSession()) tenta adquirir o mesmo lock → deadlock.
+    // Usamos setTimeout(0) para deferir carregarPerfil fora do escopo do lock.
+    const { data: listener } = supabase.auth.onAuthStateChange((evento, sessao) => {
       const ts = new Date().toISOString().slice(11, 23);
       console.log(`[AUTH ${ts}] "${evento}" user=${sessao?.user?.id?.slice(0, 8) ?? 'null'} perfilRef=${perfilIdAtual.current?.slice(0, 8) ?? 'null'}`);
 
@@ -106,13 +103,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(sessao.user);
         if (perfilIdAtual.current !== sessao.user.id) {
           setCarregando(true);
-          await carregarPerfil(sessao.user.id);
+          const userId = sessao.user.id;
+          // setTimeout(0): garante que carregarPerfil roda APÓS o lock ser liberado
+          setTimeout(() => { if (montado) carregarPerfil(userId); }, 0);
         } else {
           console.log(`[AUTH ${ts}] perfil já carregado — skip`);
           setCarregando(false);
         }
       } else {
-        // INITIAL_SESSION sem sessão — usuário não está logado
+        // INITIAL_SESSION com sessão nula = não há usuário logado
         setCarregando(false);
       }
     });
@@ -125,6 +124,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = async (matricula: string, senha: string) => {
     console.log('[LOGIN] limpando token local...');
+    // scope:'local' remove do localStorage sem chamar servidor.
+    // Necessário quando há token expirado/zumbi no cache após fechar o navegador.
     try { await supabase.auth.signOut({ scope: 'local' }); } catch { /* ignora */ }
     const emailFake = `${matricula.toUpperCase()}@cadastro.fake`;
     console.log('[LOGIN] chamando signInWithPassword...');
