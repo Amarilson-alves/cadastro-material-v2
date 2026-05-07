@@ -19,6 +19,7 @@ const UFS = ['PR', 'PRI', 'SC', 'RS'];
 const TIPOS_OBRA = [
   { value: 'Alivio',    label: 'Alívio' },
   { value: 'Adequacao', label: 'Adequação' },
+  { value: 'Site', label: 'Site' },
 ];
 const FORM_VAZIO = {
   idObra: '', cidade: '', cluster: '',

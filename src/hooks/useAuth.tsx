@@ -123,7 +123,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = async (matricula: string, senha: string) => {
     console.log('[LOGIN] iniciando — limpando token local...');
-    try { await supabase.auth.signOut(); } catch { /* ignora erro do fantasma */ }
+    // scope:'local' limpa o localStorage sem chamar o servidor.
+    // Necessário porque signOut() completo falha com JWT expirado e não limpa o cache.
+    try { await supabase.auth.signOut({ scope: 'local' }); } catch { /* ignora */ }
     const emailFake = `${matricula.toUpperCase()}@cadastro.fake`;
     console.log('[LOGIN] chamando signInWithPassword...');
     const { error } = await supabase.auth.signInWithPassword({ email: emailFake, password: senha });
