@@ -287,6 +287,7 @@ export default function Campo() {
                     <button
                       key={material.sku}
                       onClick={() => adicionarMaterial(material)}
+                      title={material.descricao}
                       className={`group text-left p-3.5 rounded-xl border transition-smooth relative overflow-hidden ${
                         sel
                           ? 'border-blue-400 bg-blue-50 ring-1 ring-blue-400/30'
@@ -296,7 +297,7 @@ export default function Campo() {
                       {sel && (
                         <CheckCircle2 className="absolute top-2.5 right-2.5 h-4 w-4 text-blue-500" />
                       )}
-                      <p className="font-medium text-sm text-gray-800 pr-6 leading-tight truncate">
+                      <p className="font-medium text-sm text-gray-800 pr-6 leading-tight line-clamp-2">
                         {material.descricao}
                       </p>
                       <div className="flex items-center gap-1.5 mt-1.5">
